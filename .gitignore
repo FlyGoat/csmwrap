@@ -50,3 +50,8 @@ modules.order
 Module.symvers
 Mkfile.old
 dkms.conf
+
+# EFI Stuff
+*.efi
+*.log
+NvVars
