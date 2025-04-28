@@ -121,7 +121,8 @@ int build_e820_map(struct csmwrap_priv *priv)
     
     /* Save the number of entries in the low_stub */
     priv->low_stub->e820_entries = e820_entries;
-    
+
+#if 0
     printf("E820 memory map created with %d entries\n", e820_entries);
     
     /* Print the E820 map entries for debugging */
@@ -131,6 +132,7 @@ int build_e820_map(struct csmwrap_priv *priv)
                (unsigned int) (e820_map[i].addr + e820_map[i].size - 1),
                e820_map[i].type);
     }
+#endif
     
     return e820_entries;
 }

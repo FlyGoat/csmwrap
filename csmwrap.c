@@ -187,7 +187,7 @@ int main(int argc, char_t **argv)
             priv.csm_efi_table->Compatibility16CallOffset);
 
     /* WARNING: No EFI runtime service afterwards */
-    exit_bs();
+    //exit_bs();
 
     /* Disable external interrupts */
     asm volatile ("cli");
@@ -200,6 +200,8 @@ int main(int argc, char_t **argv)
     outb(0x40, 0x00);
     outb(0x40, 0x00);
 
+    printf("CSM: %x\n", (uintptr_t)priv.csm_efi_table);
+
     /* Copy ROM to location, as late as possible */
     memcpy((void*)csm_bin_base, Csm16_bin, sizeof(Csm16_bin));
     memcpy((void*)VGABIOS_START, vgabios_bin, sizeof(vgabios_bin));
@@ -208,11 +210,16 @@ int main(int argc, char_t **argv)
     Regs.X.AX = Legacy16InitializeYourself;
     Regs.X.ES = EFI_SEGMENT(&priv.low_stub->init_table);
     Regs.X.BX = EFI_OFFSET(&priv.low_stub->init_table);
+
+    printf("@@@@@@@@@@ Legacy16InitializeYourself %x:%x\n", Regs.X.ES, Regs.X.BX);
+
     LegacyBiosFarCall86(priv.csm_efi_table->Compatibility16CallSegment,
                         priv.csm_efi_table->Compatibility16CallOffset,
                         &Regs,
                         NULL,
                         0);
+
+    printf("@@@@@@@@@@ Legacy16InitializeYourself done\n");
 
     memset(&Regs, 0, sizeof(EFI_IA32_REGISTER_SET));
     Regs.X.AX = Legacy16DispatchOprom;
@@ -224,6 +231,8 @@ int main(int argc, char_t **argv)
                         NULL,
                         0);
 
+    printf("@@@@@@@@@@ Legacy16DispatchOprom AX=%d\n", Regs.X.AX);
+
     memset(&Regs, 0, sizeof(EFI_IA32_REGISTER_SET));
     Regs.X.AX = Legacy16PrepareToBoot;
     Regs.X.ES = EFI_SEGMENT(&priv.low_stub->boot_table);
@@ -234,6 +243,10 @@ int main(int argc, char_t **argv)
                         &Regs,
                         NULL,
                         0);
+
+    printf("@@@@@@@@@@ Legacy16PrepareToBoot AX=%d\n", Regs.X.AX);
+
+    exit_bs();
 
     memset(&Regs, 0, sizeof(EFI_IA32_REGISTER_SET));
     Regs.X.AX = Legacy16Boot;

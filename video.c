@@ -13,13 +13,12 @@ int find_pci_vga(struct csmwrap_priv *priv)
             uint16_t vid;
             int maxfunc = 1;
 
-            if (pciConfigReadWord(bus, device, function, 0x0) == 0xFFFF)
-                break;
             // It's a multi-function device, so check remaining functions
             if ((pciConfigReadByte(bus, device, function, 0xe) & 0x80) != 0)
                 maxfunc = 8;
             for (function = 0; function < maxfunc; function++) {
                 if (pciConfigReadWord(bus, device, function, 0x0) != 0xFFFF) {
+                    printf("Scanning PCI bus %x:%x:%x\n", bus, device, function);
                     if (pciConfigReadByte(bus, device, function, 0xb) == 0x3) {
                         /* Do we need to disable ROM BAR? */
                         printf("Found VGA PCI %x:%x:%x, VID: %x DID: %x\n", bus, device, function,
@@ -57,7 +56,7 @@ int csmwrap_video_init(struct csmwrap_priv *priv)
     }
 
     /* FIXME: What if it's not a VBE mode? */
-    currentMode = gop->Mode->Mode;
+    currentMode = gop->Mode ? gop->Mode->Mode : 0;
 
     /* we got the interface, get current mode */
     status = gop->QueryMode(gop, currentMode, &isiz, &info);
@@ -79,12 +78,64 @@ int csmwrap_video_init(struct csmwrap_priv *priv)
         info->PixelFormat==PixelBlueGreenRedReserved8BitPerColor?0xff:(
         info->PixelFormat==PixelBitMask?info->PixelInformation.BlueMask:0)));
 
-    /* FIXME: Assumed 32bbp, not good */
+    printf("EFI Framebuffer: %x\n", gop->Mode->FrameBufferBase);
+
     vgabios->physical_address = gop->Mode->FrameBufferBase;
+
+    if (gop->Mode->FrameBufferBase >= 0xffffffff && priv->vga_pci_bus == 0 && priv->vga_devfn == (2 << 3) &&
+        pciConfigReadWord(0, 2, 0, 0x0) == 0x8086) {
+        printf("Attempt to Enable IGD Legacy Mapping for Intel \n");
+        uint8_t val, orig;
+        uint32_t val32, orig32;
+
+        // MSR
+        orig = inb(0x3cc); /* MSR Read 3CC */
+        val |= (1 << 1); /* Set Memory Decoding Bit */
+        outb(0x3c2, val); /* MSR Write 3C2 */
+        val = inb(0x3cc); /* MSR Read 3CC */
+        printf("IGD MSR: %x -> %x\n", orig, val);
+
+        // GR06
+        outb(0x3ce, 0x06); /* GR06 Write */
+        orig = inb(0x3cf); /* GR06 Read */
+        val = orig & ~((0x3) << 2); /* Clear Bit 2 and 3 */
+        outb(0x3ce, 0x06); /* GR06 Write */
+        outb(0x3cf, val); /* GR06 Write */
+        val = inb(0x3cf); /* GR06 Read */
+        printf("IGD GR06: %x -> %x\n", orig, val);
+
+        // MGGC
+        orig32 = pciConfigReadDWord(0, 2, 0, 0x50);
+        val32 = orig32 & ~(1 << 1); /* Clear Bit 1 */
+        pciConfigWriteDWord(0, 2, 0, 0x50, val32);
+        val32 = pciConfigReadDWord(0, 2, 0, 0x50);
+        printf("IGD MGGC: %x -> %x\n", val32, val32);
+
+        vgabios->physical_address = 0xA0000;
+    } else if (gop->Mode->FrameBufferBase > 0xffffffff) {
+        printf("Framebuffer is too high, try Disabling Above 4G \n");
+        return -1;
+    }
+
+    if (!vgabios->physical_address) {
+        printf("Framebuffer invalid. try disable Above 4G\n");
+        return -1;
+    } else {
+        printf("Actual framebuffer: %x\n", vgabios->physical_address);
+    }
+    /* FIXME: Assumed 32bbp, not good */
+#if 1
     vgabios->bbp = 32;
     vgabios->x_resolution = info->HorizontalResolution;
     vgabios->y_resolution = info->VerticalResolution;
     vgabios->bytes_per_line = info->PixelsPerScanLine * (vgabios->bbp / 8);
+#else
+    vgabios->physical_address = gop->Mode->FrameBufferBase;
+    vgabios->bbp = 32;
+    vgabios->x_resolution = 800;
+    vgabios->y_resolution = 600;
+    vgabios->bytes_per_line = 800   * (vgabios->bbp / 8);
+#endif
 
 
     /* Not going to reset mode */
