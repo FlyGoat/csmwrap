@@ -36,6 +36,68 @@ static void *find_table(uint32_t signature, uint8_t *csm_bin_base, size_t size)
     return Table;
 }
 
+int test_bios_region_rw()
+{
+    uint32_t backup;
+    uint32_t *bios_region = (uint32_t *)BIOSROM_START;
+    uint32_t *bios_region_end = (uint32_t *)BIOSROM_END;
+    uint32_t *ptr = bios_region;
+
+    while (ptr < bios_region_end) {
+        backup = *ptr;
+        *ptr = 0xdeadbeef;
+        if (*ptr != 0xdeadbeef) {
+            printf("Unable to write to BIOS region\n");
+            return -1;
+        }
+        *ptr = backup;
+        ptr++;
+    }
+
+    return 0;
+}
+
+int set_smbios_table()
+{
+    int i;
+    efi_guid_t smbiosGuid = SMBIOS_TABLE_GUID;
+    efi_guid_t smbios3Guid = SMBIOS3_TABLE_GUID;
+    boolean_t found = FALSE;
+    uintptr_t table_addr = 0;
+
+    for (i = 0; i < ST->NumberOfTableEntries; i++) {
+        efi_configuration_table_t *table;
+        table = ST->ConfigurationTable + i;
+
+        if (!efi_guidcmp(table->VendorGuid, smbiosGuid)) {
+            printf("Found SMBIOS Table at %x\n", (uintptr_t)table->VendorTable);
+            table_addr = (uintptr_t)table->VendorTable;
+            found = TRUE;
+            break;
+        }
+
+        if (!efi_guidcmp(table->VendorGuid, smbios3Guid)) {
+            printf("Found SMBIOS 3.0 Table at %x\n", (uintptr_t)table->VendorTable);
+            table_addr = (uintptr_t)table->VendorTable;
+            found = TRUE;
+            break;
+        }
+    }
+
+    if (found) {
+        if (table_addr > 0xffffffff) {
+            printf("SMBIOS table address too high\n");
+            return -1;
+        }
+        priv.low_stub->boot_table.SmbiosTable = table_addr;
+        return 0;
+    }
+
+    printf("No SMBIOS table found\n");
+
+    return -1;
+}
+
 /**
  * Print out arguments. This source can be compiled with and without UEFI_NO_UTF8
  */
@@ -45,7 +107,9 @@ int main(int argc, char_t **argv)
     uintptr_t csm_bin_base;
     EFI_IA32_REGISTER_SET Regs;
 
-    BS->RaiseTPL(TPL_HIGH_LEVEL);
+    printf("Hello World!\n");
+
+    BS->RaiseTPL(TPL_NOTIFY);
     BS->SetWatchdogTimer(0, 0, 0, NULL);
 
     printf("Hello World!\n");
@@ -54,6 +118,11 @@ int main(int argc, char_t **argv)
         return -1;
     }
     printf("Unlock!\n");
+
+    if (test_bios_region_rw()) {
+        printf("BIOS region bad\n");
+        return -1;
+    }
 
     csm_bin_base = (uintptr_t)BIOSROM_END - sizeof(Csm16_bin);
     priv.csm_bin_base = csm_bin_base;
@@ -88,13 +157,21 @@ int main(int argc, char_t **argv)
     priv.low_stub = (struct low_stub *)LOW_STUB_BASE;
     memset((void*)LOW_STUB_BASE, 0, CONVEN_END - LOW_STUB_BASE);
 
+    build_e820_map(&priv);
+    uintptr_t e820_low = (uintptr_t)&priv.low_stub->e820_map;
+    priv.csm_efi_table->E820Pointer = e820_low;
+    priv.csm_efi_table->E820Length = sizeof(struct e820_entry) * priv.low_stub->e820_entries;
+
+    set_smbios_table();
+    priv.low_stub->boot_table.AcpiTable = priv.csm_efi_table->AcpiRsdPtrPointer;
+
     uintptr_t pmm_base = LegacyBiosInitializeThunkAndTable(LOW_STUB_BASE, sizeof(struct low_stub));
     pmm_base += LOW_STACK_SIZE;
 
     printf("Init Thunk pmm: %lx\n", (uintptr_t)pmm_base);
 
     priv.low_stub->init_table.BiosLessThan1MB = 0x00080000; // Whole EBDA
-    priv.low_stub->init_table.ThunkStart = (uint32_t)priv.low_stub;
+    priv.low_stub->init_table.ThunkStart = (uint32_t)(uintptr_t)priv.low_stub;
     priv.low_stub->init_table.ThunkSizeInBytes = sizeof(struct low_stub);
     priv.low_stub->init_table.LowPmmMemory = (uint32_t)pmm_base;
     priv.low_stub->init_table.LowPmmMemorySizeInBytes = (uint32_t)CONVEN_END - (uint32_t)pmm_base;

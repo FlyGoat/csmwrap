@@ -25,6 +25,8 @@ struct csmwrap_priv {
 extern int unlock_bios_region();
 extern int csmwrap_video_init(struct csmwrap_priv *priv);
 extern int copy_rsdt(struct csmwrap_priv *priv);
+int build_e820_map(struct csmwrap_priv *priv);
+
 
 static inline int
 efi_guidcmp (efi_guid_t left, efi_guid_t right)
@@ -33,12 +35,25 @@ efi_guidcmp (efi_guid_t left, efi_guid_t right)
 }
 
 #pragma pack(1)
+struct e820_entry {
+    uint64_t addr;   /* 64-bit base address */
+    uint64_t size;   /* 64-bit length */
+    uint32_t type;   /* entry type */
+};
+#pragma pack()
+#define E820_MAX_ENTRIES 32
+
+#pragma pack(1)
 struct low_stub {
     LOW_MEMORY_THUNK thunk;
 
     EFI_TO_COMPATIBILITY16_INIT_TABLE init_table;
     EFI_TO_COMPATIBILITY16_BOOT_TABLE boot_table;
     EFI_DISPATCH_OPROM_TABLE vga_oprom_table;
+
+    /* E820 memory map */
+    int e820_entries;
+    struct e820_entry e820_map[E820_MAX_ENTRIES];
 };
 #pragma pack()
 
@@ -56,5 +71,6 @@ struct low_stub {
 #define BIOSROM_END     0x00100000
 /* End of low 1MiB */
 #define HIPMM_SIZE      0x400000 /* Allocated on runtime, can be anywhere in 32bit */
+
 
 #endif

@@ -30,19 +30,20 @@ int copy_rsdt(struct csmwrap_priv *priv)
         efi_configuration_table_t *table;
         table = ST->ConfigurationTable + i;
 
-        if (efi_guidcmp(table->VendorGuid, acpi2Guid)) {
-            printf("Found ACPI 2.0 RSDT at %x\n", (uintptr_t)table->VendorTable);
+        if (!efi_guidcmp(table->VendorGuid, acpi2Guid)) {
+            printf("Found ACPI 2.0 RSDT at %x, copied to %x\n", (uintptr_t)table->VendorTable, (uintptr_t)table_target);
             memcpy(table_target, table->VendorTable, sizeof(struct RSDPDescriptor20));
             return 0;
         }
 
-        if (efi_guidcmp(table->VendorGuid, acpiGuid)) {
-            printf("Found ACPI 1.0 RSDT at %x\n", (uintptr_t)table->VendorTable);
+        if (!efi_guidcmp(table->VendorGuid, acpiGuid)) {
+            printf("Found ACPI 1.0 RSDT at %x, copied to %x\n", (uintptr_t)table->VendorTable, (uintptr_t)table_target);
             memcpy(table_target, table->VendorTable, sizeof(struct RSDPDescriptor));
             return 0;
         }
 
     }
+
     printf("No ACPI RSDT found\n");
     return -1;
 }
