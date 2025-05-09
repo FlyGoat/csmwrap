@@ -295,7 +295,7 @@ typedef enum {
   /// code is read/write.
   /// Input:
   ///   AX = Compatibility16PrepareToBoot
-  ///   ES:BX = Pointer to EFI_TO_COMPATIBILITY16_BOOT_TABLE structure  
+  ///   ES:BX = Pointer to EFI_TO_COMPATIBILITY16_BOOT_TABLE structure
   /// Return:
   ///   AX = Returned status codes
   ///
@@ -391,7 +391,7 @@ typedef struct {
   UINT16  RuntimeSegment;               ///< The segment where the OpROM can be relocated to. If this value is 0x0000, this
                                         ///< means that the relocation of this run time code is not supported.
                                         ///< Inconsistent with specification here: 
-                                        ///< The member's name "OpromDestinationSegment" [defined in Intel Framework Compatibility Support Module Specification / 0.97 version] 
+                                        ///< The member's name "OpromDestinationSegment" [defined in Intel Framework Compatibility Support Module Specification / 0.97 version]
                                         ///< has been changed to "RuntimeSegment" since keeping backward compatible.
 
 } EFI_DISPATCH_OPROM_TABLE;

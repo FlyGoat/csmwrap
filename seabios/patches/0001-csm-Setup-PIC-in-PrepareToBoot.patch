@@ -1,0 +1,27 @@
+From c7849b92ea651c976ab0141e2b04e94ba73900d6 Mon Sep 17 00:00:00 2001
+From: Jiaxun Yang <jiaxun.yang@flygoat.com>
+Date: Fri, 9 May 2025 17:48:07 +0100
+Subject: [PATCH 1/2] csm: Setup PIC in PrepareToBoot
+
+This is required to get timer working.
+
+Signed-off-by: Jiaxun Yang <jiaxun.yang@flygoat.com>
+---
+ src/fw/csm.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/src/fw/csm.c b/src/fw/csm.c
+index 579debdcf4cc..ccd7645e1ce9 100644
+--- a/src/fw/csm.c
++++ b/src/fw/csm.c
+@@ -184,6 +184,7 @@ handle_csm_0002(struct bregs *regs)
+     struct bios_data_area_s *bda = MAKE_FLATPTR(SEG_BDA, 0);
+     bda->hdcount = 0;
+ 
++    pic_setup();
+     thread_setup();
+     mathcp_setup();
+     timer_setup();
+-- 
+2.39.5 (Apple Git-154)
+

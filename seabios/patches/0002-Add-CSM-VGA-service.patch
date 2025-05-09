@@ -1,0 +1,120 @@
+From a32ab563d402f54d72d28f91c99fdff863f2f502 Mon Sep 17 00:00:00 2001
+From: Jiaxun Yang <jiaxun.yang@flygoat.com>
+Date: Thu, 9 Dec 2021 18:39:03 +0000
+Subject: [PATCH 2/2] Add CSM VGA service
+
+Signed-off-by: Jiaxun Yang <jiaxun.yang@flygoat.com>
+---
+ vgasrc/Kconfig   | 10 +++++++++-
+ vgasrc/cbvga.c   | 43 +++++++++++++++++++++++++++++++++++++++++++
+ vgasrc/vgahw.h   |  2 ++
+ vgasrc/vgautil.h |  1 +
+ 4 files changed, 55 insertions(+), 1 deletion(-)
+
+diff --git a/vgasrc/Kconfig b/vgasrc/Kconfig
+index c8fac36fb92b..003f2c6a578e 100644
+--- a/vgasrc/Kconfig
++++ b/vgasrc/Kconfig
+@@ -64,6 +64,14 @@ menu "VGA ROM"
+                 Build support for a vgabios wrapper around video
+                 devices initialized using coreboot native vga init.
+ 
++        config VGA_CSM
++            depends on CSM
++            bool "CSM linear framebuffer"
++            select VGA_EMULATE_TEXT
++            help
++                Build support for a vgabios wrapper around video
++                devices initialized using UEFI native vga init.
++
+         config DISPLAY_BOCHS
+             depends on QEMU
+             bool "qemu bochs-display support"
+@@ -173,7 +181,7 @@ menu "VGA ROM"
+             Support VBE.
+ 
+     config VGA_PCI
+-        depends on BUILD_VGABIOS && !VGA_COREBOOT
++        depends on BUILD_VGABIOS && !VGA_COREBOOT && !VGA_CSM
+         bool "PCI ROM Headers"
+         default y
+         help
+diff --git a/vgasrc/cbvga.c b/vgasrc/cbvga.c
+index 243e6be9459b..7e78a61348a1 100644
+--- a/vgasrc/cbvga.c
++++ b/vgasrc/cbvga.c
+@@ -273,3 +273,46 @@ cbvga_setup(void)
+     cbvga_setup_modes(addr, bpp, xlines, ylines, linelength);
+     return 0;
+ }
++
++#pragma pack(1)
++struct csm_vga_table {
++    u32 signature;
++
++    u32 physical_address;
++    u32 bbp;
++    u32 x_resolution;
++    u32 y_resolution;
++    u32 bytes_per_line;
++};
++#pragma pack()
++
++#define SIGNATURE_16(A, B)        ((A) | (B << 8))
++#define SIGNATURE_32(A, B, C, D)  (SIGNATURE_16 (A, B) | (SIGNATURE_16 (C, D) << 16))
++
++#define CSM_VGA_TABLE_SIGNATURE SIGNATURE_32 ('C', 'V', 'G', '$')
++
++struct csm_vga_table csm_vga VAR16 __aligned(16) = {
++    .signature = CSM_VGA_TABLE_SIGNATURE,
++};
++
++int
++csmvga_setup(void)
++{
++    dprintf(1, "csm vga init\n");
++
++    if (GET_GLOBAL(HaveRunInit))
++        return 0;
++
++    if (!GET_GLOBAL(csm_vga.physical_address)) {
++        dprintf(1, "No CSM VGA table, exiting\n");
++        return -1;
++    }
++
++    cbvga_setup_modes(GET_GLOBAL(csm_vga.physical_address),
++                    GET_GLOBAL(csm_vga.bbp),
++                    GET_GLOBAL(csm_vga.x_resolution),
++                    GET_GLOBAL(csm_vga.y_resolution),
++                    GET_GLOBAL(csm_vga.bytes_per_line));
++
++    return 0;
++}
+diff --git a/vgasrc/vgahw.h b/vgasrc/vgahw.h
+index a6ddaa95c019..e72fbb49dfe3 100644
+--- a/vgasrc/vgahw.h
++++ b/vgasrc/vgahw.h
+@@ -57,6 +57,8 @@ static inline int vgahw_setup(void) {
+         return geodevga_setup();
+     if (CONFIG_VGA_COREBOOT)
+         return cbvga_setup();
++    if (CONFIG_VGA_CSM)
++        return csmvga_setup();
+     if (CONFIG_DISPLAY_BOCHS)
+         return bochs_display_setup();
+     if (CONFIG_VGA_RAMFB)
+diff --git a/vgasrc/vgautil.h b/vgasrc/vgautil.h
+index ea1ac772a270..00ea7821f8bb 100644
+--- a/vgasrc/vgautil.h
++++ b/vgasrc/vgautil.h
+@@ -20,6 +20,7 @@ int cbvga_save_restore(int cmd, u16 seg, void *data);
+ int cbvga_set_mode(struct vgamode_s *vmode_g, int flags);
+ void cbvga_setup_modes(u64 addr, u8 bpp, u32 xlines, u32 ylines, u32 linelength);
+ int cbvga_setup(void);
++int csmvga_setup(void);
+ 
+ // bochsdisplay.c
+ int bochs_display_setup(void);
+-- 
+2.39.5 (Apple Git-154)
+

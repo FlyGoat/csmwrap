@@ -2,12 +2,12 @@ name: Build
 on:
   push:
   pull_request:
+  release:
+    types: [created]
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
-
     steps:
     - uses: actions/checkout@v4
     - name: Install deps
@@ -18,3 +18,11 @@ jobs:
       with:
         name: csmwrap.efi
         path: csmwrap.efi
+    - name: Upload release
+      uses: actions/upload-release-asset@v1
+      if: github.event_name == 'release'
+      with:
+        upload_url: ${{ github.event.release.upload_url }}
+        asset_path: csmwrap.efi
+        asset_name: csmwrap.efi
+        asset_content_type: application/octet-stream
