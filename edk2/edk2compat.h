@@ -6,7 +6,11 @@
 #define IN
 #define OUT
 #define OPTIONAL
+#if 0
 #define PACKED __attribute__((packed))
+#else
+#define PACKED
+#endif
 
 #define UINT8 uint8_t
 #define UINT16 uint16_t
@@ -19,6 +23,8 @@
 #define SIGNATURE_16(A,B)             EFI_SIGNATURE_16(A,B)
 #define SIGNATURE_32(A,B,C,D)         EFI_SIGNATURE_32(A,B,C,D)
 #define SIGNATURE_64(A,B,C,D,E,F,G,H) EFI_SIGNATURE_64(A,B,C,D,E,F,G,H)
+
+#define LShiftU64(Value, ShiftCount) ((UINT64)(Value) << (ShiftCount))
 
 #define EFI_STATUS efi_status_t
 #define EFI_GUID efi_guid_t
