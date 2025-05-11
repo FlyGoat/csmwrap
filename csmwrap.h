@@ -2,7 +2,9 @@
 #define _CSM_WRAP_H
 
 #include <uefi.h>
-#include "Protocol/LegacyBios.h"
+#include "edk2/LegacyBios.h"
+#include "edk2/LegacyRegion2.h"
+#include <edk2/PciIo.h>
 #include "x86thunk.h"
 
 #define FALSE   0
@@ -17,13 +19,17 @@ struct csmwrap_priv {
     struct low_stub *low_stub;
 
     /* VGA stuff */
+    efi_gop_t *gop;
+    EFI_PCI_IO_PROTOCOL *vga_pci_io;
     uint8_t vga_pci_bus;
-    uint8_t vga_devfn;    
+    uint8_t vga_pci_devfn;
+
     struct csm_vga_table *vga_table;
 };
 
 extern int unlock_bios_region();
 extern int csmwrap_video_init(struct csmwrap_priv *priv);
+extern int csmwrap_video_fallback(struct csmwrap_priv *priv);
 extern int copy_rsdt(struct csmwrap_priv *priv);
 int build_e820_map(struct csmwrap_priv *priv);
 

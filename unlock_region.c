@@ -7,7 +7,7 @@
 
  #include <uefi.h>
  #include "csmwrap.h"
- #include "Protocol/LegacyRegion2.h"
+ #include "edk2/LegacyRegion2.h"
  #include "io.h"
 
  static efi_guid_t gEfiLegacyRegion2ProtocolGuid = EFI_LEGACY_REGION2_PROTOCOL_GUID;

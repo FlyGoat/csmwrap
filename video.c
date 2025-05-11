@@ -2,38 +2,180 @@
 #include "csmwrap.h"
 #include "io.h"
 
-int find_pci_vga(struct csmwrap_priv *priv)
+efi_status_t FindGopPciDevice(struct csmwrap_priv *priv)
 {
-     uint16_t bus;
-     uint8_t device;
- 
-     for (bus = 0; bus < 256; bus++) {
-         for (device = 0; device < 32; device++) {
-            uint8_t function = 0;
-            uint16_t vid;
-            int maxfunc = 1;
+    EFI_STATUS                   Status = EFI_SUCCESS;
+    EFI_HANDLE                   *HandleBuffer;
+    EFI_HANDLE                   Handle;
+    UINTN                        HandleCount;
+    UINTN                        HandleIndex;
+    efi_guid_t gopGuid = EFI_GRAPHICS_OUTPUT_PROTOCOL_GUID;
+    efi_guid_t DevicePathGuid = EFI_DEVICE_PATH_PROTOCOL_GUID;
+    efi_guid_t PciIoGuid = EFI_PCI_IO_PROTOCOL_GUID;
+    EFI_DEVICE_PATH_PROTOCOL *DevicePath;
+    EFI_PCI_IO_PROTOCOL *PciIo;
+    efi_gop_t *Gop;
 
-            // It's a multi-function device, so check remaining functions
-            if ((pciConfigReadByte(bus, device, function, 0xe) & 0x80) != 0)
-                maxfunc = 8;
-            for (function = 0; function < maxfunc; function++) {
-                if (pciConfigReadWord(bus, device, function, 0x0) != 0xFFFF) {
-                    printf("Scanning PCI bus %x:%x:%x\n", bus, device, function);
-                    if (pciConfigReadByte(bus, device, function, 0xb) == 0x3) {
-                        /* Do we need to disable ROM BAR? */
-                        printf("Found VGA PCI %x:%x:%x, VID: %x DID: %x\n", bus, device, function,
-                                    pciConfigReadWord(bus, device, function, 0x0),
-                                    pciConfigReadWord(bus, device, function, 0x2));
-                        priv->vga_pci_bus = bus;
-                        priv->vga_devfn = device << 3 | function;
-                        return 0;
-                    }
-                }
-            }
-         }
-     }
-    printf("PCI VGA not found!\n");
-    return -1;
+    // Get all handles that support GOP
+    Status = gBS->LocateHandleBuffer(
+                    ByProtocol,
+                    &gopGuid,
+                    NULL,
+                    &HandleCount,
+                    &HandleBuffer
+                    );
+    if (EFI_ERROR(Status)) {
+        printf("Failed to locate GOP handles: %d\n", Status);
+        return Status;
+    }
+
+    // Iterate through each GOP handle
+    for (HandleIndex = 0; HandleIndex < HandleCount; HandleIndex++) {
+        // Get the GOP protocol
+        Status = gBS->HandleProtocol(
+                        HandleBuffer[HandleIndex],
+                        &gopGuid,
+                        (VOID**)&Gop
+                        );
+        if (EFI_ERROR(Status)) {
+            continue;
+        }
+
+        priv->gop = Gop;
+        break;
+    }
+
+    if (priv->gop == NULL) {
+        printf("No GOP handle found\n");
+        // Free the handle buffer
+        gBS->FreePool(HandleBuffer);
+        goto Out;
+    }
+
+    Status = gBS->HandleProtocol(
+                    HandleBuffer[HandleIndex],
+                    &DevicePathGuid,
+                    (VOID**)&DevicePath
+                    );
+    // We are done with previous handle buffer atm
+    gBS->FreePool(HandleBuffer);
+    if (EFI_ERROR(Status)) {
+        printf("Failed to get Device Path protocol: %d\n", Status);
+        goto Out;
+    }
+
+    Status = gBS->LocateDevicePath(
+        &PciIoGuid,
+        &DevicePath,
+        &Handle
+        );
+
+    if (EFI_ERROR(Status)) {
+        printf("Failed to locate PCI I/O protocol: %d\n", Status);
+        goto Out;
+    }
+
+    Status = gBS->HandleProtocol(
+                    Handle,
+                    &PciIoGuid,
+                    (VOID**)&PciIo
+                    );
+
+    if (!EFI_ERROR(Status)) {
+        UINT16 VendorId, DeviceId;
+        UINTN Seg, Bus, Device, Function;
+
+        priv->vga_pci_io = PciIo;
+
+        Status = PciIo->GetLocation(
+                                    PciIo,
+                                    &Seg,
+                                    &Bus,
+                                    &Device,
+                                    &Function
+                                    );
+
+        priv->vga_pci_bus = (UINT8)Bus;
+        priv->vga_pci_devfn = (UINT8)(Device << 3 | Function);
+
+        Status = PciIo->Pci.Read(
+                                PciIo,
+                                EfiPciIoWidthUint16,
+                                0, // Vendor ID offset
+                                1,
+                                &VendorId
+                                );
+
+        Status = PciIo->Pci.Read(
+                                PciIo,
+                                EfiPciIoWidthUint16,
+                                2, // Device ID offset
+                                1,
+                                &DeviceId
+                                );
+
+
+        printf("GOP PCI: %04x:%02x:%02x.%02x %04x:%04x\n",
+                    Seg, (UINT8)Bus, (UINT8)Device, (UINT8)Function,
+                    VendorId, DeviceId);
+    } else {
+        printf("Failed to get PCI I/O protocol: %d\n", Status);
+    }
+Out:
+  return Status;
+}
+
+static int csmwrap_pci_vgaarb(struct csmwrap_priv *priv)
+{
+    efi_status_t Status;
+    EFI_PCI_IO_PROTOCOL *PciIo = priv->vga_pci_io;
+    UINT64 Attributes = 0;
+    UINT64 Supported = 0;
+    BOOLEAN unsupported = FALSE;
+
+    if (!PciIo) {
+        return -1;
+    }
+
+    Status = PciIo->Attributes(PciIo, EfiPciIoAttributeOperationSupported,
+                               0, &Supported);
+
+    if (EFI_ERROR(Status)) {
+        printf("%s: Failed to get supported attributes: %d\n", __func__, Status);
+        return Status;
+    }
+
+    Attributes = Supported & (EFI_PCI_IO_ATTRIBUTE_VGA_IO | EFI_PCI_IO_ATTRIBUTE_VGA_IO_16);
+
+    if (Attributes == 0) {
+        printf("%s: No VGA IO attributes support\n", __func__);
+        unsupported = TRUE;
+    } else if (Attributes == (EFI_PCI_IO_ATTRIBUTE_VGA_IO | EFI_PCI_IO_ATTRIBUTE_VGA_IO_16)) {
+        Attributes = EFI_PCI_IO_ATTRIBUTE_VGA_IO; // We want to use regular VGA IO
+    }
+
+    if (Supported & EFI_PCI_IO_ATTRIBUTE_VGA_MEMORY) {
+        Attributes |= EFI_PCI_IO_ATTRIBUTE_VGA_MEMORY;
+    } else {
+        printf("%s: No VGA memory attributes support\n", __func__);
+        unsupported = TRUE;
+    }
+
+    if (unsupported) {
+        printf("%s: Unable to select attribute\n", __func__);
+        return -1;
+    }
+
+    Status = PciIo->Attributes(PciIo, EfiPciIoAttributeOperationEnable,
+                               Attributes, NULL);
+    if (EFI_ERROR(Status)) {
+        printf("%s: Failed to set attributes: %d\n", __func__, Status);
+        return Status;
+    }
+
+    printf("%s: Success! Attributes: %llx\n", __func__, Attributes);
+
+    return 0;
 }
 
 int csmwrap_video_init(struct csmwrap_priv *priv)
@@ -46,13 +188,16 @@ int csmwrap_video_init(struct csmwrap_priv *priv)
     uintn_t isiz = sizeof(efi_gop_mode_info_t), currentMode, i;
     uintn_t target;
 
-    status = BS->LocateProtocol(&gopGuid, NULL, (void**)&gop);
-
-    find_pci_vga(priv);
+    status = FindGopPciDevice(priv);
+    gop = priv->gop;
     
-    if(EFI_ERROR(status) && !gop) {
+    if (EFI_ERROR(status) && !gop) {
         printf("Unable to get GOP service\n");
         return -1;
+    }
+
+    if (priv->vga_pci_io) {
+        status = csmwrap_pci_vgaarb(priv);
     }
 
     /* FIXME: What if it's not a VBE mode? */
@@ -82,37 +227,7 @@ int csmwrap_video_init(struct csmwrap_priv *priv)
 
     vgabios->physical_address = gop->Mode->FrameBufferBase;
 
-    if (gop->Mode->FrameBufferBase >= 0xffffffff && priv->vga_pci_bus == 0 && priv->vga_devfn == (2 << 3) &&
-        pciConfigReadWord(0, 2, 0, 0x0) == 0x8086) {
-        printf("Attempt to Enable IGD Legacy Mapping for Intel \n");
-        uint8_t val, orig;
-        uint32_t val32, orig32;
-
-        // MSR
-        orig = inb(0x3cc); /* MSR Read 3CC */
-        val |= (1 << 1); /* Set Memory Decoding Bit */
-        outb(0x3c2, val); /* MSR Write 3C2 */
-        val = inb(0x3cc); /* MSR Read 3CC */
-        printf("IGD MSR: %x -> %x\n", orig, val);
-
-        // GR06
-        outb(0x3ce, 0x06); /* GR06 Write */
-        orig = inb(0x3cf); /* GR06 Read */
-        val = orig & ~((0x3) << 2); /* Clear Bit 2 and 3 */
-        outb(0x3ce, 0x06); /* GR06 Write */
-        outb(0x3cf, val); /* GR06 Write */
-        val = inb(0x3cf); /* GR06 Read */
-        printf("IGD GR06: %x -> %x\n", orig, val);
-
-        // MGGC
-        orig32 = pciConfigReadDWord(0, 2, 0, 0x50);
-        val32 = orig32 & ~(1 << 1); /* Clear Bit 1 */
-        pciConfigWriteDWord(0, 2, 0, 0x50, val32);
-        val32 = pciConfigReadDWord(0, 2, 0, 0x50);
-        printf("IGD MGGC: %x -> %x\n", val32, val32);
-
-        vgabios->physical_address = 0xA0000;
-    } else if (gop->Mode->FrameBufferBase > 0xffffffff) {
+    if (gop->Mode->FrameBufferBase > 0xffffffff) {
         printf("Framebuffer is too high, try Disabling Above 4G \n");
         return -1;
     }
@@ -120,35 +235,30 @@ int csmwrap_video_init(struct csmwrap_priv *priv)
     if (!vgabios->physical_address) {
         printf("Framebuffer invalid. try disable Above 4G\n");
         return -1;
-    } else {
-        printf("Actual framebuffer: %x\n", vgabios->physical_address);
     }
+
     /* FIXME: Assumed 32bbp, not good */
-#if 1
     vgabios->bbp = 32;
     vgabios->x_resolution = info->HorizontalResolution;
     vgabios->y_resolution = info->VerticalResolution;
     vgabios->bytes_per_line = info->PixelsPerScanLine * (vgabios->bbp / 8);
-#else
-    vgabios->physical_address = gop->Mode->FrameBufferBase;
-    vgabios->bbp = 32;
-    vgabios->x_resolution = 800;
-    vgabios->y_resolution = 600;
-    vgabios->bytes_per_line = 800   * (vgabios->bbp / 8);
-#endif
-
-
-    /* Not going to reset mode */
-# if 0
-    status = gop->SetMode(gop, atoi(argv[1]));
-    /* changing the resolution might mess up ConOut and StdErr, better to reset them */
-    ST->ConOut->Reset(ST->ConOut, 0);
-    ST->StdErr->Reset(ST->StdErr, 0);
-    if(EFI_ERROR(status)) {
-        printf("unable to set video mode\n");
-        return 0;
-    }
-#endif
 
     return 0;
 }
+
+int csmwrap_video_fallback(struct csmwrap_priv *priv)
+{
+    struct csm_vga_table *vgabios = priv->vga_table;
+
+    vgabios->physical_address = 0xa0000;
+    vgabios->bbp = 32;
+    vgabios->x_resolution = 800;
+    vgabios->y_resolution = 600;
+    vgabios->bytes_per_line = 800 * (vgabios->bbp / 8);
+
+    printf("WARNING: Using fallback Video, you wont't be able to get display!\n");
+
+    return 0;
+}
+
+

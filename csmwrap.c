@@ -1,5 +1,4 @@
 #include <uefi.h>
-
 #include "csmwrap.h"
 
 #include "io.h"
@@ -109,6 +108,7 @@ int main(int argc, char_t **argv)
 {
     uintptr_t HiPmm;
     uintptr_t csm_bin_base;
+    efi_status_t Status;
     EFI_IA32_REGISTER_SET Regs;
 
     printf("%s", banner);
@@ -147,16 +147,18 @@ int main(int argc, char_t **argv)
         return -1;
     }
 
-    /* FIXME: Take care of E820 and SMBIOS here */
     copy_rsdt(&priv);
-    csmwrap_video_init(&priv);
+
+    Status = csmwrap_video_init(&priv);
+    if (Status != EFI_SUCCESS) {
+        csmwrap_video_fallback(&priv);
+    }
 
     HiPmm = 0xffffffff;
     if (BS->AllocatePages(AllocateMaxAddress, EfiRuntimeServicesData, HIPMM_SIZE / EFI_PAGE_SIZE, &HiPmm) != EFI_SUCCESS) {
         printf("Unable to alloc HiPmm!!!\n");
         return -1;
-    }                                                           
-
+    }
 
     priv.low_stub = (struct low_stub *)LOW_STUB_BASE;
     memset((void*)LOW_STUB_BASE, 0, CONVEN_END - LOW_STUB_BASE);
@@ -184,7 +186,7 @@ int main(int argc, char_t **argv)
 
     priv.low_stub->vga_oprom_table.OpromSegment = EFI_SEGMENT(VGABIOS_START);
     priv.low_stub->vga_oprom_table.PciBus = priv.vga_pci_bus;
-    priv.low_stub->vga_oprom_table.PciDeviceFunction = priv.vga_devfn;
+    priv.low_stub->vga_oprom_table.PciDeviceFunction = priv.vga_pci_devfn;
 
 
     printf("CALL16 %x:%x\n", priv.csm_efi_table->Compatibility16CallSegment,
