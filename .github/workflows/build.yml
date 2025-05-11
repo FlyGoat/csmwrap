@@ -22,7 +22,9 @@ jobs:
         path: csmwrap.efi
     - name: Upload release
       uses: actions/upload-release-asset@v1
-      if: github.event_name == 'release'
+      if: ${{ github.event_name == 'release' }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ github.event.release.upload_url }}
         asset_path: csmwrap.efi
