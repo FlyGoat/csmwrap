@@ -28,12 +28,10 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #define _EFI_LEGACY_BIOS_H_
 
 ///
-/// 
+///
 ///
 
-#define UINT8 uint8_t
-#define UINT16 uint16_t
-#define UINT32 uint32_t
+#include "edk2compat.h"
 
 #pragma pack(1)
 
@@ -41,11 +39,6 @@ typedef UINT8                       SERIAL_MODE;
 typedef UINT8                       PARALLEL_MODE;
 
 #define EFI_COMPATIBILITY16_TABLE_SIGNATURE SIGNATURE_32 ('I', 'F', 'E', '$')
-
-#define SIGNATURE_16(A, B)        ((A) | (B << 8))
-#define SIGNATURE_32(A, B, C, D)  (SIGNATURE_16 (A, B) | (SIGNATURE_16 (C, D) << 16))
-#define SIGNATURE_64(A, B, C, D, E, F, G, H) \
-    (SIGNATURE_32 (A, B, C, D) | ((UINT64) (SIGNATURE_32 (E, F, G, H)) << 32))
 
 ///
 /// There is a table located within the traditional BIOS in either the 0xF000:xxxx or 0xE000:xxxx

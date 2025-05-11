@@ -7,13 +7,12 @@
 
  #include <uefi.h>
  #include "csmwrap.h"
- #include "LegacyRegion2.h"
+ #include "Protocol/LegacyRegion2.h"
  #include "io.h"
 
  static efi_guid_t gEfiLegacyRegion2ProtocolGuid = EFI_LEGACY_REGION2_PROTOCOL_GUID;
 
- 
- /* 
+ /*
   * Intel chipset PCI configuration register addresses for PAM 
   * (Programmable Attribute Map) controls
   */
@@ -36,7 +35,7 @@
   */
  efi_status_t unlock_legacy_region_protocol(void)
  {
-     efi_legacy_region2_protocol_t *legacy_region = NULL;
+     EFI_LEGACY_REGION2_PROTOCOL *legacy_region = NULL;
      efi_status_t status;
      uint32_t granularity;
      
@@ -59,7 +58,7 @@
 
      /* First enable memory reads in the region */
      boolean_t on = TRUE;
-     status = legacy_region->decode(
+     status = legacy_region->Decode(
          legacy_region,
          0xC0000,         /* Start address */
          0x40000,         /* Length (256KB) */
@@ -73,7 +72,7 @@
      }
 
      /* Then enable memory writes in the region */
-     status = legacy_region->unlock(
+     status = legacy_region->UnLock(
          legacy_region,
          0xC0000,         /* Start address */
          0x40000,         /* Length (256KB) */
@@ -166,13 +165,13 @@
   * @param legacy_region Legacy Region 2 Protocol instance
   * @return EFI_SUCCESS on success, or an error status code on failure
   */
- efi_status_t print_legacy_region_info(efi_legacy_region2_protocol_t *legacy_region)
+ efi_status_t print_legacy_region_info(EFI_LEGACY_REGION2_PROTOCOL *legacy_region)
  {
      efi_status_t status;
      uint32_t descriptor_count = 0;
-     efi_legacy_region_descriptor_t *descriptors = NULL;
+     EFI_LEGACY_REGION_DESCRIPTOR *descriptors = NULL;
      
-     status = legacy_region->get_info(
+     status = legacy_region->GetInfo(
          legacy_region,
          &descriptor_count,
          &descriptors
@@ -189,28 +188,28 @@
      for (uint32_t i = 0; i < descriptor_count; i++) {
          printf("Region %u: 0x%08x-0x%08x, Granularity: 0x%x bytes\n",
                 i,
-                descriptors[i].start,
-                descriptors[i].start + descriptors[i].length - 1,
-                descriptors[i].granularity);
-         
+                descriptors[i].Start,
+                descriptors[i].Start + descriptors[i].Length - 1,
+                descriptors[i].Granularity);
+
          printf("  Attribute: ");
-         switch (descriptors[i].attribute) {
-             case legacy_region_decoded:
+         switch (descriptors[i].Attribute) {
+             case LegacyRegionDecoded:
                  printf("Read Enabled\n");
                  break;
-             case legacy_region_not_decoded:
+             case LegacyRegionNotDecoded:
                  printf("Read Disabled\n");
                  break;
-             case legacy_region_write_enabled:
+             case LegacyRegionWriteEnabled:
                  printf("Write Enabled\n");
                  break;
-             case legacy_region_write_disabled:
+             case LegacyRegionWriteDisabled:
                  printf("Write Disabled\n");
                  break;
-             case legacy_region_boot_locked:
+             case LegacyRegionBootLocked:
                  printf("Boot Locked\n");
                  break;
-             case legacy_region_not_locked:
+             case LegacyRegionNotLocked:
                  printf("Not Locked\n");
                  break;
              default:
@@ -230,7 +229,7 @@
   */
  int unlock_bios_region(void)
  {
-     efi_legacy_region2_protocol_t *legacy_region = NULL;
+     EFI_LEGACY_REGION2_PROTOCOL *legacy_region = NULL;
      efi_status_t status;
      
      /* First, try to use the Legacy Region 2 Protocol */

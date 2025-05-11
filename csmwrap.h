@@ -2,7 +2,7 @@
 #define _CSM_WRAP_H
 
 #include <uefi.h>
-#include "LegacyBios.h"
+#include "Protocol/LegacyBios.h"
 #include "x86thunk.h"
 
 #define FALSE   0
