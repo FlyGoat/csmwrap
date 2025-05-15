@@ -180,7 +180,7 @@ static int csmwrap_pci_vgaarb(struct csmwrap_priv *priv)
 
 int csmwrap_video_init(struct csmwrap_priv *priv)
 {
-    struct csm_vga_table *vgabios = priv->vga_table;
+    struct cb_framebuffer *cb_fb = &priv->cb_fb;
     efi_status_t status;
     efi_guid_t gopGuid = EFI_GRAPHICS_OUTPUT_PROTOCOL_GUID;
     efi_gop_t *gop = NULL;
@@ -190,7 +190,7 @@ int csmwrap_video_init(struct csmwrap_priv *priv)
 
     status = FindGopPciDevice(priv);
     gop = priv->gop;
-    
+
     if (EFI_ERROR(status) && !gop) {
         printf("Unable to get GOP service\n");
         return -1;
@@ -225,36 +225,83 @@ int csmwrap_video_init(struct csmwrap_priv *priv)
 
     printf("EFI Framebuffer: %x\n", gop->Mode->FrameBufferBase);
 
-    vgabios->physical_address = gop->Mode->FrameBufferBase;
+    cb_fb->physical_address = gop->Mode->FrameBufferBase;
+
+    if (!cb_fb->physical_address) {
+        printf("Framebuffer invalid.\n");
+        return -1;
+    }
 
     if (gop->Mode->FrameBufferBase > 0xffffffff) {
         printf("Framebuffer is too high, try Disabling Above 4G \n");
         return -1;
     }
 
-    if (!vgabios->physical_address) {
-        printf("Framebuffer invalid. try disable Above 4G\n");
-        return -1;
-    }
+    cb_fb->x_resolution = info->HorizontalResolution;
+    cb_fb->y_resolution = info->VerticalResolution;
+    /* Always 32 bbp */
+    cb_fb->bytes_per_line = info->PixelsPerScanLine * 4;
+    cb_fb->bits_per_pixel = 32;
 
-    /* FIXME: Assumed 32bbp, not good */
-    vgabios->bbp = 32;
-    vgabios->x_resolution = info->HorizontalResolution;
-    vgabios->y_resolution = info->VerticalResolution;
-    vgabios->bytes_per_line = info->PixelsPerScanLine * (vgabios->bbp / 8);
+    switch (info->PixelFormat) {
+        case PixelRedGreenBlueReserved8BitPerColor:
+            cb_fb->red_mask_pos = 0;
+            cb_fb->red_mask_size = 8;
+            cb_fb->green_mask_pos = 8;
+            cb_fb->green_mask_size = 8;
+            cb_fb->blue_mask_pos = 16;
+            cb_fb->blue_mask_size = 8;
+            cb_fb->reserved_mask_pos = 24;
+            cb_fb->reserved_mask_size = 8;
+            break;
+        case PixelBlueGreenRedReserved8BitPerColor:
+            cb_fb->blue_mask_pos = 0;
+            cb_fb->blue_mask_size = 8;
+            cb_fb->green_mask_pos = 8;
+            cb_fb->green_mask_size = 8;
+            cb_fb->red_mask_pos = 16;
+            cb_fb->red_mask_size = 8;
+            cb_fb->reserved_mask_pos = 24;
+            cb_fb->reserved_mask_size = 8;
+            break;
+        case PixelBitMask:
+            // Calculate position (find first set bit)
+            cb_fb->red_mask_pos = __builtin_ffs(info->PixelInformation.RedMask) - 1;
+            cb_fb->green_mask_pos = __builtin_ffs(info->PixelInformation.GreenMask) - 1;
+            cb_fb->blue_mask_pos = __builtin_ffs(info->PixelInformation.BlueMask) - 1;
+            cb_fb->reserved_mask_pos = __builtin_ffs(info->PixelInformation.ReservedMask) - 1;
+
+            // Calculate size (count set bits)
+            cb_fb->red_mask_size = __builtin_popcount(info->PixelInformation.RedMask);
+            cb_fb->green_mask_size = __builtin_popcount(info->PixelInformation.GreenMask);
+            cb_fb->blue_mask_size = __builtin_popcount(info->PixelInformation.BlueMask);
+            cb_fb->reserved_mask_size = __builtin_popcount(info->PixelInformation.ReservedMask);
+            break;
+        default:
+            printf("Unsupported pixel format: %d\n", info->PixelFormat);
+            return -1;
+    }
 
     return 0;
 }
 
 int csmwrap_video_fallback(struct csmwrap_priv *priv)
 {
-    struct csm_vga_table *vgabios = priv->vga_table;
+    struct cb_framebuffer *cb_fb = &priv->cb_fb;
 
-    vgabios->physical_address = 0xa0000;
-    vgabios->bbp = 32;
-    vgabios->x_resolution = 800;
-    vgabios->y_resolution = 600;
-    vgabios->bytes_per_line = 800 * (vgabios->bbp / 8);
+    cb_fb->physical_address = 0x000A0000;
+    cb_fb->x_resolution = 1024;
+    cb_fb->y_resolution = 768;
+    cb_fb->bytes_per_line = 1024 * 4;
+    cb_fb->bits_per_pixel = 32;
+    cb_fb->red_mask_pos = 0;
+    cb_fb->red_mask_size = 8;
+    cb_fb->green_mask_pos = 8;
+    cb_fb->green_mask_size = 8;
+    cb_fb->blue_mask_pos = 16;
+    cb_fb->blue_mask_size = 8;
+    cb_fb->reserved_mask_pos = 24;
+    cb_fb->reserved_mask_size = 8;
 
     printf("WARNING: Using fallback Video, you wont't be able to get display!\n");
 

@@ -3,6 +3,7 @@
 
 #include <uefi.h>
 #include "edk2/Acpi20.h"
+#include "edk2/Coreboot.h"
 #include "edk2/E820.h"
 #include "edk2/LegacyBios.h"
 #include "edk2/LegacyRegion2.h"
@@ -26,13 +27,13 @@ struct csmwrap_priv {
     EFI_PCI_IO_PROTOCOL *vga_pci_io;
     uint8_t vga_pci_bus;
     uint8_t vga_pci_devfn;
-
-    struct csm_vga_table *vga_table;
+    struct cb_framebuffer cb_fb;
 };
 
 extern int unlock_bios_region();
 extern int csmwrap_video_init(struct csmwrap_priv *priv);
 extern int csmwrap_video_fallback(struct csmwrap_priv *priv);
+extern int build_coreboot_table(struct csmwrap_priv *priv);
 extern int copy_rsdt(struct csmwrap_priv *priv);
 int build_e820_map(struct csmwrap_priv *priv);
 
@@ -62,9 +63,10 @@ struct low_stub {
 
 /* Memory map information */
 /* In low memory */
+#define CB_TABLE_START  0x00000500
 #define CONVEN_START    0x00007E00
 /* We may have some stack here */
-#define LOW_STUB_BASE  0x00020000
+#define LOW_STUB_BASE   0x00020000
 /* Thunk + PMM */
 #define CONVEN_END      0x00080000
 #define EBDA_BASE       CONVEN_END
@@ -75,5 +77,14 @@ struct low_stub {
 /* End of low 1MiB */
 #define HIPMM_SIZE      0x400000 /* Allocated on runtime, can be anywhere in 32bit */
 
+#ifndef ARRAY_SIZE
+#define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
+#endif
+
+#define ALIGN(x, a)             __ALIGN_MASK(x, (__typeof__(x))(a)-1UL)
+#define __ALIGN_MASK(x, mask)   (((x)+(mask))&~(mask))
+#define ALIGN_UP(x, a)          ALIGN((x), (a))
+#define ALIGN_DOWN(x, a)        ((x) & ~((__typeof__(x))(a)-1UL))
+#define IS_ALIGNED(x, a)        (((x) & ((__typeof__(x))(a)-1UL)) == 0)
 
 #endif
