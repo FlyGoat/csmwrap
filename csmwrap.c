@@ -166,7 +166,7 @@ int main(int argc, char_t **argv)
     build_e820_map(&priv);
     uintptr_t e820_low = (uintptr_t)&priv.low_stub->e820_map;
     priv.csm_efi_table->E820Pointer = e820_low;
-    priv.csm_efi_table->E820Length = sizeof(struct e820_entry) * priv.low_stub->e820_entries;
+    priv.csm_efi_table->E820Length = sizeof(EFI_E820_ENTRY64) * priv.low_stub->e820_entries;
 
     set_smbios_table();
     priv.low_stub->boot_table.AcpiTable = priv.csm_efi_table->AcpiRsdPtrPointer;

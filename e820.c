@@ -2,30 +2,23 @@
 
 #include "csmwrap.h"
 
-/* 
- * E820 memory map definitions
- * Based on the legacy BIOS E820 memory mapping interface
- */
-#define E820_RAM        1
-#define E820_RESERVED   2
-#define E820_ACPI       3
-#define E820_NVS        4
-#define E820_UNUSABLE   5
+/* This is not in E820.h */
+#define EfiAcpiAddressRangeUnusable 5
 
-/* 
+/*
  * Convert UEFI memory types to E820 types 
  */
 static uint32_t convert_memory_type(efi_memory_type_t type)
 {
     switch (type) {
         case EfiConventionalMemory:
-            return E820_RAM;
+            return EfiAcpiAddressRangeMemory;
         case EfiACPIReclaimMemory:
-            return E820_ACPI;
+            return EfiAcpiAddressRangeACPI;
         case EfiACPIMemoryNVS:
-            return E820_NVS;
+            return EfiAcpiAddressRangeNVS;
         case EfiUnusableMemory:
-            return E820_UNUSABLE;
+            return EfiAcpiAddressRangeUnusable;
         case EfiRuntimeServicesCode:
         case EfiRuntimeServicesData:
         case EfiMemoryMappedIO:
@@ -38,7 +31,7 @@ static uint32_t convert_memory_type(efi_memory_type_t type)
         case EfiBootServicesData:
         case EfiReservedMemoryType:
         default:
-            return E820_RESERVED;
+            return EfiAcpiAddressRangeReserved;
     }
 }
 
@@ -51,7 +44,7 @@ int build_e820_map(struct csmwrap_priv *priv)
     efi_memory_descriptor_t *memory_map = NULL;
     efi_memory_descriptor_t *memory_map_end;
     efi_memory_descriptor_t *memory_map_ptr;
-    struct e820_entry *e820_map;
+    EFI_E820_ENTRY64 *e820_map;
     uintn_t memory_map_size = 0;
     uintn_t map_key = 0;
     uintn_t descriptor_size = 0;
@@ -90,7 +83,7 @@ int build_e820_map(struct csmwrap_priv *priv)
     
     /* Process each memory descriptor and convert to E820 format */
     for (memory_map_ptr = memory_map; 
-         memory_map_ptr < memory_map_end && e820_entries < E820_MAX_ENTRIES; 
+         memory_map_ptr < memory_map_end && e820_entries < E820_MAX_ENTRIES;
          memory_map_ptr = NextMemoryDescriptor(memory_map_ptr, descriptor_size)) {
         
         uint64_t start = memory_map_ptr->PhysicalStart;
@@ -100,18 +93,22 @@ int build_e820_map(struct csmwrap_priv *priv)
         /* Skip zero-length regions */
         if (start == end)
             continue;
-        
+
+        /* Skip memory types that are not reported in E820 */
+        if (type == 0)
+            continue;
+
         /* Try to merge with previous entry if possible */
         if (e820_entries > 0 && 
-            e820_map[e820_entries - 1].addr + e820_map[e820_entries - 1].size == start &&
-            e820_map[e820_entries - 1].type == type) {
+            e820_map[e820_entries - 1].BaseAddr + e820_map[e820_entries - 1].Length == start &&
+            e820_map[e820_entries - 1].Type == type) {
             /* Extend the previous entry */
-            e820_map[e820_entries - 1].size += (end - start);
+            e820_map[e820_entries - 1].Length += (end - start);
         } else {
             /* Create a new entry */
-            e820_map[e820_entries].addr = start;
-            e820_map[e820_entries].size = end - start;
-            e820_map[e820_entries].type = type;
+            e820_map[e820_entries].BaseAddr = start;
+            e820_map[e820_entries].Length = end - start;
+            e820_map[e820_entries].Type = type;
             e820_entries++;
         }
     }
@@ -128,9 +125,9 @@ int build_e820_map(struct csmwrap_priv *priv)
     /* Print the E820 map entries for debugging */
     for (int i = 0; i < e820_entries; i++) {
         printf("E820: [%x-%x] type %d\n",
-               (unsigned int) e820_map[i].addr,
-               (unsigned int) (e820_map[i].addr + e820_map[i].size - 1),
-               e820_map[i].type);
+               (unsigned int) e820_map[i].BaseAddr,
+               (unsigned int) (e820_map[i].BaseAddr + e820_map[i].Type - 1),
+               e820_map[i].Length);
     }
 #endif
     

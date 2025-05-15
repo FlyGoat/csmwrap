@@ -2,9 +2,12 @@
 #define _CSM_WRAP_H
 
 #include <uefi.h>
+#include "edk2/Acpi20.h"
+#include "edk2/E820.h"
 #include "edk2/LegacyBios.h"
 #include "edk2/LegacyRegion2.h"
-#include <edk2/PciIo.h>
+#include "edk2/PciRootBridgeIo.h"
+#include "edk2/PciIo.h"
 #include "x86thunk.h"
 
 #define FALSE   0
@@ -40,13 +43,7 @@ efi_guidcmp (efi_guid_t left, efi_guid_t right)
 	return memcmp(&left, &right, sizeof (efi_guid_t));
 }
 
-#pragma pack(1)
-struct e820_entry {
-    uint64_t addr;   /* 64-bit base address */
-    uint64_t size;   /* 64-bit length */
-    uint32_t type;   /* entry type */
-};
-#pragma pack()
+
 #define E820_MAX_ENTRIES 32
 
 #pragma pack(1)
@@ -59,7 +56,7 @@ struct low_stub {
 
     /* E820 memory map */
     int e820_entries;
-    struct e820_entry e820_map[E820_MAX_ENTRIES];
+    EFI_E820_ENTRY64 e820_map[E820_MAX_ENTRIES];
 };
 #pragma pack()
 
