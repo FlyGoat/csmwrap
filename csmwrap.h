@@ -2,13 +2,16 @@
 #define _CSM_WRAP_H
 
 #include <uefi.h>
-#include "edk2/Acpi20.h"
+
+#include "edk2/Acpi.h"
 #include "edk2/Coreboot.h"
 #include "edk2/E820.h"
-#include "edk2/LegacyBios.h"
+#include "edk2/LegacyBiosPlatform.h"
 #include "edk2/LegacyRegion2.h"
+#include "edk2/Pci.h"
 #include "edk2/PciRootBridgeIo.h"
 #include "edk2/PciIo.h"
+
 #include "x86thunk.h"
 
 #define FALSE   0

@@ -10,6 +10,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #define _ACPI_1_0_H_
 
 #include "edk2compat.h"
+#include "AcpiAml.h"
 
 ///
 /// Common table header, this prefaces all ACPI tables, including FACS, but

@@ -12,9 +12,7 @@
 #define _X86_THUNK_H
 
 #include <uefi.h>
-
-#define EFI_SEGMENT(_Adr)  (uint16_t) ((uint16_t) (((uintptr_t) (_Adr)) >> 4) & 0xf000)
-#define EFI_OFFSET(_Adr)   (uint16_t) (((uint16_t) ((uintptr_t) (_Adr))) & 0xffff)
+#include "edk2/LegacyBios.h"
 
 #pragma pack (1)
 ///
@@ -213,124 +211,6 @@ typedef struct {
 #define THUNK_ATTRIBUTE_BIG_REAL_MODE              0x00000001
 #define THUNK_ATTRIBUTE_DISABLE_A20_MASK_INT_15    0x00000002
 #define THUNK_ATTRIBUTE_DISABLE_A20_MASK_KBD_CTRL  0x00000004
-
-///
-/// EFI_EFLAGS_REG
-///
-typedef struct {
-  uint32_t    CF        : 1;
-  uint32_t    Reserved1 : 1;
-  uint32_t    PF        : 1;
-  uint32_t    Reserved2 : 1;
-  uint32_t    AF        : 1;
-  uint32_t    Reserved3 : 1;
-  uint32_t    ZF        : 1;
-  uint32_t    SF        : 1;
-  uint32_t    TF        : 1;
-  uint32_t    IF        : 1;
-  uint32_t    DF        : 1;
-  uint32_t    OF        : 1;
-  uint32_t    IOPL      : 2;
-  uint32_t    NT        : 1;
-  uint32_t    Reserved4 : 2;
-  uint32_t    VM        : 1;
-  uint32_t    Reserved5 : 14;
-} EFI_EFLAGS_REG;
-
-///
-/// EFI_DWORD_REGS
-///
-typedef struct {
-  uint32_t            EAX;
-  uint32_t            EBX;
-  uint32_t            ECX;
-  uint32_t            EDX;
-  uint32_t            ESI;
-  uint32_t            EDI;
-  EFI_EFLAGS_REG    EFlags;
-  uint16_t            ES;
-  uint16_t            CS;
-  uint16_t            SS;
-  uint16_t            DS;
-  uint16_t            FS;
-  uint16_t            GS;
-  uint32_t            EBP;
-  uint32_t            ESP;
-} EFI_DWORD_REGS;
-
-///
-/// EFI_FLAGS_REG
-///
-typedef struct {
-  uint16_t    CF        : 1;
-  uint16_t    Reserved1 : 1;
-  uint16_t    PF        : 1;
-  uint16_t    Reserved2 : 1;
-  uint16_t    AF        : 1;
-  uint16_t    Reserved3 : 1;
-  uint16_t    ZF        : 1;
-  uint16_t    SF        : 1;
-  uint16_t    TF        : 1;
-  uint16_t    IF        : 1;
-  uint16_t    DF        : 1;
-  uint16_t    OF        : 1;
-  uint16_t    IOPL      : 2;
-  uint16_t    NT        : 1;
-  uint16_t    Reserved4 : 1;
-} EFI_FLAGS_REG;
-
-///
-/// EFI_WORD_REGS
-///
-typedef struct {
-  uint16_t           AX;
-  uint16_t           ReservedAX;
-  uint16_t           BX;
-  uint16_t           ReservedBX;
-  uint16_t           CX;
-  uint16_t           ReservedCX;
-  uint16_t           DX;
-  uint16_t           ReservedDX;
-  uint16_t           SI;
-  uint16_t           ReservedSI;
-  uint16_t           DI;
-  uint16_t           ReservedDI;
-  EFI_FLAGS_REG    Flags;
-  uint16_t           ReservedFlags;
-  uint16_t           ES;
-  uint16_t           CS;
-  uint16_t           SS;
-  uint16_t           DS;
-  uint16_t           FS;
-  uint16_t           GS;
-  uint16_t           BP;
-  uint16_t           ReservedBP;
-  uint16_t           SP;
-  uint16_t           ReservedSP;
-} EFI_WORD_REGS;
-
-///
-/// EFI_BYTE_REGS
-///
-typedef struct {
-  uint8_t     AL, AH;
-  uint16_t    ReservedAX;
-  uint8_t     BL, BH;
-  uint16_t    ReservedBX;
-  uint8_t     CL, CH;
-  uint16_t    ReservedCX;
-  uint8_t     DL, DH;
-  uint16_t    ReservedDX;
-} EFI_BYTE_REGS;
-
-///
-/// EFI_IA32_REGISTER_SET
-///
-typedef union {
-  EFI_DWORD_REGS    E;
-  EFI_WORD_REGS     X;
-  EFI_BYTE_REGS     H;
-} EFI_IA32_REGISTER_SET;
 
 #pragma pack(1)
 
