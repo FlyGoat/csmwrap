@@ -12,14 +12,14 @@ jobs:
     - uses: actions/checkout@v4
       with:
         submodules: true
-    - name: Install deps
-      run: sudo apt-get install -y build-essential clang lld nasm
+    - name: Install distro deps
+      run: sudo apt-get install -y build-essential nasm
     - name: make
-      run: make ARCH=x86_64
+      run: make
     - uses: actions/upload-artifact@v4
       with:
         name: csmwrap.efi
-        path: csmwrap.efi
+        path: bin-x86_64/csmwrap.efi
     - name: Upload release
       uses: actions/upload-release-asset@v1
       if: ${{ github.event_name == 'release' }}
@@ -27,6 +27,6 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ github.event.release.upload_url }}
-        asset_path: csmwrap.efi
+        asset_path: bin-x86_64/csmwrap.efi
         asset_name: csmwrap.efi
         asset_content_type: application/octet-stream

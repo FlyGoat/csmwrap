@@ -45,6 +45,6 @@ Meanwhile you can try to inject the GPU driver to OS image to avoid using the VE
 
 ## Credits
 - [SeaBIOS](https://www.seabios.org/) for the CSM module and VESA VBIOS
-- [POSIX-UEFI](https://gitlab.com/bztsrc/posix-uefi) for EFI C runtime and other useful code
+- [Nyu-EFI](https://codeberg.org/osdev/nyu-efi) for EFI C runtime, build system, and headers
 - [EDK2](https://github.com/tianocore/edk2) for code snippets
 - @CanonKong for test feedback and general knowledge

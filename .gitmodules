@@ -1,3 +1,12 @@
-[submodule "posix-uefi"]
-	path = posix-uefi
-	url = https://gitlab.com/bztsrc/posix-uefi.git
+[submodule "freestnd-c-hdrs"]
+	path = freestnd-c-hdrs
+	url = https://codeberg.org/osdev/freestnd-c-hdrs-0bsd.git
+[submodule "src/cc-runtime"]
+	path = src/cc-runtime
+	url = https://codeberg.org/osdev/cc-runtime.git
+[submodule "nyu-efi"]
+	path = nyu-efi
+	url = https://codeberg.org/osdev/nyu-efi.git
+[submodule "nanoprintf"]
+	path = nanoprintf
+	url = https://github.com/charlesnicholson/nanoprintf.git
