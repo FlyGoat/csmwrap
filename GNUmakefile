@@ -10,7 +10,7 @@ override OUTPUT := csmwrap
 ARCH := x86_64
 
 # Check if the architecture is supported.
-ifeq ($(filter $(ARCH),aarch64 loongarch64 riscv64 x86_64),)
+ifeq ($(filter $(ARCH),ia32 x86_64),)
     $(error Architecture $(ARCH) not supported)
 endif
 
@@ -29,10 +29,8 @@ CFLAGS := -g -O2 -pipe
 # User controllable C preprocessor flags. We set none by default.
 CPPFLAGS :=
 
-ifeq ($(ARCH),x86_64)
-    # User controllable nasm flags.
-    NASMFLAGS := -F dwarf -g
-endif
+# User controllable nasm flags.
+NASMFLAGS := -F dwarf -g
 
 # User controllable linker flags. We set none by default.
 LDFLAGS :=
@@ -67,13 +65,25 @@ override CPPFLAGS := \
     -MMD \
     -MP
 
-ifeq ($(ARCH),x86_64)
-    # Internal nasm flags that should not be changed by the user.
-    override NASMFLAGS += \
-        -Wall
-endif
+# Internal nasm flags that should not be changed by the user.
+override NASMFLAGS += \
+    -Wall
 
 # Architecture specific internal flags.
+ifeq ($(ARCH),ia32)
+    ifeq ($(CC_IS_CLANG),1)
+        override CC += \
+            -target i386-unknown-none
+    endif
+    override CFLAGS += \
+        -m32 \
+        -march=i386 \
+        -mno-80387
+    override LDFLAGS += \
+        -Wl,-m,elf_i386
+    override NASMFLAGS += \
+        -f elf32
+endif
 ifeq ($(ARCH),x86_64)
     ifeq ($(CC_IS_CLANG),1)
         override CC += \
@@ -92,45 +102,6 @@ ifeq ($(ARCH),x86_64)
     override NASMFLAGS += \
         -f elf64
 endif
-ifeq ($(ARCH),aarch64)
-    ifeq ($(CC_IS_CLANG),1)
-        override CC += \
-            -target aarch64-unknown-none
-    endif
-    override CFLAGS += \
-        -mgeneral-regs-only
-    override LDFLAGS += \
-        -Wl,-m,aarch64elf
-endif
-ifeq ($(ARCH),riscv64)
-    ifeq ($(CC_IS_CLANG),1)
-        override CC += \
-            -target riscv64-unknown-none
-        override CFLAGS += \
-            -march=rv64imac
-    else
-        override CFLAGS += \
-            -march=rv64imac_zicsr_zifencei
-    endif
-    override CFLAGS += \
-        -mabi=lp64 \
-        -mno-relax
-    override LDFLAGS += \
-        -Wl,-m,elf64lriscv \
-        -Wl,--no-relax
-endif
-ifeq ($(ARCH),loongarch64)
-    ifeq ($(CC_IS_CLANG),1)
-        override CC += \
-            -target loongarch64-unknown-none
-    endif
-    override CFLAGS += \
-        -march=loongarch64 \
-        -mabi=lp64s
-    override LDFLAGS += \
-        -Wl,-m,elf64loongarch \
-        -Wl,--no-relax
-endif
 
 # Internal linker flags that should not be changed by the user.
 override LDFLAGS += \
@@ -142,17 +113,23 @@ override LDFLAGS += \
     -Wl,--gc-sections \
     -T nyu-efi/src/elf_$(ARCH)_efi.lds
 
-# Use "find" to glob all *.c, *.S, and *.asm files in the tree and obtain the
+# Use "find" to glob all *.c, *.S, and *.asm{32,64} files in the tree and obtain the
 # object and header dependency file names.
 override SRCFILES := $(shell cd src && find -L * -type f | LC_ALL=C sort)
 override CFILES := $(filter %.c,$(SRCFILES))
 override ASFILES := $(filter %.S,$(SRCFILES))
+ifeq ($(ARCH),ia32)
+override NASMFILES := $(filter %.asm32,$(SRCFILES))
+endif
 ifeq ($(ARCH),x86_64)
-override NASMFILES := $(filter %.asm,$(SRCFILES))
+override NASMFILES := $(filter %.asm64,$(SRCFILES))
 endif
 override OBJ := $(addprefix obj-$(ARCH)/,$(CFILES:.c=.c.o) $(ASFILES:.S=.S.o))
+ifeq ($(ARCH),ia32)
+override OBJ += $(addprefix obj-$(ARCH)/,$(NASMFILES:.asm32=.asm32.o))
+endif
 ifeq ($(ARCH),x86_64)
-override OBJ += $(addprefix obj-$(ARCH)/,$(NASMFILES:.asm=.asm.o))
+override OBJ += $(addprefix obj-$(ARCH)/,$(NASMFILES:.asm64=.asm64.o))
 endif
 override HEADER_DEPS := $(addprefix obj-$(ARCH)/,$(CFILES:.c=.c.d) $(ASFILES:.S=.S.d))
 
@@ -200,9 +177,16 @@ obj-$(ARCH)/%.S.o: src/%.S GNUmakefile
 	mkdir -p "$$(dirname $@)"
 	$(CC) $(CFLAGS) $(CPPFLAGS) -c $< -o $@
 
+ifeq ($(ARCH),ia32)
+# Compilation rules for *.asm32 (nasm) files.
+obj-$(ARCH)/%.asm32.o: src/%.asm32 GNUmakefile
+	mkdir -p "$$(dirname $@)"
+	nasm $(NASMFLAGS) $< -o $@
+endif
+
 ifeq ($(ARCH),x86_64)
-# Compilation rules for *.asm (nasm) files.
-obj-$(ARCH)/%.asm.o: src/%.asm GNUmakefile
+# Compilation rules for *.asm64 (nasm) files.
+obj-$(ARCH)/%.asm64.o: src/%.asm64 GNUmakefile
 	mkdir -p "$$(dirname $@)"
 	nasm $(NASMFLAGS) $< -o $@
 endif
@@ -228,8 +212,8 @@ ovmf/ovmf-vars-$(ARCH).fd:
 .PHONY: run
 run: all ovmf/ovmf-code-$(ARCH).fd ovmf/ovmf-vars-$(ARCH).fd
 	mkdir -p boot/EFI/BOOT
-ifeq ($(ARCH),x86_64)
-	cp bin-$(ARCH)/$(OUTPUT).efi boot/EFI/BOOT/BOOTX64.EFI
+ifeq ($(ARCH),ia32)
+	cp bin-$(ARCH)/$(OUTPUT).efi boot/EFI/BOOT/BOOTIA32.EFI
 	qemu-system-$(ARCH) \
 		-M q35 \
 		-drive if=pflash,unit=0,format=raw,file=ovmf/ovmf-code-$(ARCH).fd,readonly=on \
@@ -237,43 +221,10 @@ ifeq ($(ARCH),x86_64)
 		-drive file=fat:rw:boot \
 		$(QEMUFLAGS)
 endif
-ifeq ($(ARCH),aarch64)
-	cp bin-$(ARCH)/$(OUTPUT).efi boot/EFI/BOOT/BOOTAA64.EFI
+ifeq ($(ARCH),x86_64)
+	cp bin-$(ARCH)/$(OUTPUT).efi boot/EFI/BOOT/BOOTX64.EFI
 	qemu-system-$(ARCH) \
-		-M virt \
-		-cpu cortex-a72 \
-		-device ramfb \
-		-device qemu-xhci \
-		-device usb-kbd \
-		-device usb-mouse \
-		-drive if=pflash,unit=0,format=raw,file=ovmf/ovmf-code-$(ARCH).fd,readonly=on \
-		-drive if=pflash,unit=1,format=raw,file=ovmf/ovmf-vars-$(ARCH).fd \
-		-drive file=fat:rw:boot \
-		$(QEMUFLAGS)
-endif
-ifeq ($(ARCH),riscv64)
-	cp bin-$(ARCH)/$(OUTPUT).efi boot/EFI/BOOT/BOOTRISCV64.EFI
-	qemu-system-$(ARCH) \
-		-M virt \
-		-cpu rv64 \
-		-device ramfb \
-		-device qemu-xhci \
-		-device usb-kbd \
-		-device usb-mouse \
-		-drive if=pflash,unit=0,format=raw,file=ovmf/ovmf-code-$(ARCH).fd,readonly=on \
-		-drive if=pflash,unit=1,format=raw,file=ovmf/ovmf-vars-$(ARCH).fd \
-		-drive file=fat:rw:boot \
-		$(QEMUFLAGS)
-endif
-ifeq ($(ARCH),loongarch64)
-	cp bin-$(ARCH)/$(OUTPUT).efi boot/EFI/BOOT/BOOTLOONGARCH64.EFI
-	qemu-system-$(ARCH) \
-		-M virt \
-		-cpu la464 \
-		-device ramfb \
-		-device qemu-xhci \
-		-device usb-kbd \
-		-device usb-mouse \
+		-M q35 \
 		-drive if=pflash,unit=0,format=raw,file=ovmf/ovmf-code-$(ARCH).fd,readonly=on \
 		-drive if=pflash,unit=1,format=raw,file=ovmf/ovmf-vars-$(ARCH).fd \
 		-drive file=fat:rw:boot \
