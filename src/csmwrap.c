@@ -201,7 +201,19 @@ EFI_STATUS efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
     efi_mmap_size += 4096;
     BS->AllocatePool(EfiLoaderData, efi_mmap_size, (void **)&efi_mmap);
     BS->GetMemoryMap(&efi_mmap_size, efi_mmap, &efi_mmap_key, &efi_desc_size, &efi_desc_ver);
-    BS->ExitBootServices(ImageHandle, efi_mmap_key);
+
+    // It may take N amounts of ExitBootServices() calls to complete...
+    // Cap at 128.
+    for (size_t i = 0; i < 128; i++) {
+        Status = BS->ExitBootServices(ImageHandle, efi_mmap_key);
+        if (Status == EFI_SUCCESS) {
+            break;
+        }
+    }
+    if (Status != EFI_SUCCESS) {
+        printf("Failed to exit boot services!");
+        return Status;
+    }
 
     /* Disable external interrupts */
     asm volatile ("cli");
