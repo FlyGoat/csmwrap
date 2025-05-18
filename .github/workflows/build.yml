@@ -14,12 +14,20 @@ jobs:
         submodules: true
     - name: Install distro deps
       run: sudo apt-get install -y build-essential nasm
-    - name: make
-      run: make
+    - name: make x86_64
+      run: |
+        make ARCH=x86_64
+        mkdir -p bin
+        cp bin-x86_64/csmwrap.efi bin/csmwrapx64.efi
+    - name: make ia32
+      run: |
+        make ARCH=ia32
+        mkdir -p bin
+        cp bin-ia32/csmwrap.efi bin/csmwrapia32.efi
     - uses: actions/upload-artifact@v4
       with:
         name: csmwrap.efi
-        path: bin-x86_64/csmwrap.efi
+        path: bin/*.efi
     - name: Upload release
       uses: actions/upload-release-asset@v1
       if: ${{ github.event_name == 'release' }}
@@ -27,6 +35,16 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ github.event.release.upload_url }}
-        asset_path: bin-x86_64/csmwrap.efi
-        asset_name: csmwrap.efi
+        asset_path: bin/csmwrapx64.efi
+        asset_name: csmwrapx64.efi
+        asset_content_type: application/octet-stream
+    - name: Upload release
+      uses: actions/upload-release-asset@v1
+      if: ${{ github.event_name == 'release' }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ github.event.release.upload_url }}
+        asset_path: bin/csmwrapia32.efi
+        asset_name: csmwrapia32.efi
         asset_content_type: application/octet-stream
