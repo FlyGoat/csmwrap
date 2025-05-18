@@ -182,11 +182,9 @@ int csmwrap_video_init(struct csmwrap_priv *priv)
 {
     struct cb_framebuffer *cb_fb = &priv->cb_fb;
     EFI_STATUS status;
-    EFI_GUID gopGuid = EFI_GRAPHICS_OUTPUT_PROTOCOL_GUID;
     EFI_GRAPHICS_OUTPUT_PROTOCOL *gop = NULL;
     EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *info = NULL;
-    UINTN isiz = sizeof(EFI_GRAPHICS_OUTPUT_MODE_INFORMATION), currentMode, i;
-    UINTN target;
+    UINTN isiz = sizeof(EFI_GRAPHICS_OUTPUT_MODE_INFORMATION), currentMode;
 
     status = FindGopPciDevice(priv);
     gop = priv->gop;

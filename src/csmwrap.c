@@ -66,7 +66,7 @@ int test_bios_region_rw()
 
 int set_smbios_table()
 {
-    int i;
+    UINTN i;
     EFI_GUID smbiosGuid = SMBIOS_TABLE_GUID;
     EFI_GUID smbios3Guid = SMBIOS3_TABLE_GUID;
     bool found = FALSE;

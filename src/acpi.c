@@ -21,7 +21,7 @@ struct RSDPDescriptor20 {
 
 int copy_rsdt(struct csmwrap_priv *priv)
 {
-    int i;
+    UINTN i;
     EFI_GUID acpiGuid = ACPI_TABLE_GUID;
     EFI_GUID acpi2Guid = ACPI_20_TABLE_GUID;
     void *table_target = priv->csm_bin + (priv->csm_efi_table->AcpiRsdPtrPointer - priv->csm_bin_base);
