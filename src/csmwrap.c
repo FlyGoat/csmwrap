@@ -110,7 +110,7 @@ EFI_STATUS efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
     ST = SystemTable;
     BS = SystemTable->BootServices;
 
-    uintptr_t HiPmm;
+    EFI_PHYSICAL_ADDRESS HiPmm;
     uintptr_t csm_bin_base;
     EFI_STATUS Status;
     EFI_IA32_REGISTER_SET Regs;
