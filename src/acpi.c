@@ -2,23 +2,6 @@
 #include <printf.h>
 #include "csmwrap.h"
 
-struct RSDPDescriptor {
- char Signature[8];
- uint8_t Checksum;
- char OEMID[6];
- uint8_t Revision;
- uint32_t RsdtAddress;
-} __attribute__ ((packed));
-
-struct RSDPDescriptor20 {
- struct RSDPDescriptor firstPart;
- 
- uint32_t Length;
- uint64_t XsdtAddress;
- uint8_t ExtendedChecksum;
- uint8_t reserved[3];
-} __attribute__ ((packed));
-
 int copy_rsdt(struct csmwrap_priv *priv)
 {
     UINTN i;
@@ -33,13 +16,13 @@ int copy_rsdt(struct csmwrap_priv *priv)
 
         if (!efi_guidcmp(table->VendorGuid, acpi2Guid)) {
             printf("Found ACPI 2.0 RSDT at %x, copied to %x\n", (uintptr_t)table->VendorTable, (uintptr_t)table_target);
-            memcpy(table_target, table->VendorTable, sizeof(struct RSDPDescriptor20));
+            memcpy(table_target, table->VendorTable, sizeof(EFI_ACPI_2_0_ROOT_SYSTEM_DESCRIPTION_POINTER));
             return 0;
         }
 
         if (!efi_guidcmp(table->VendorGuid, acpiGuid)) {
             printf("Found ACPI 1.0 RSDT at %x, copied to %x\n", (uintptr_t)table->VendorTable, (uintptr_t)table_target);
-            memcpy(table_target, table->VendorTable, sizeof(struct RSDPDescriptor));
+            memcpy(table_target, table->VendorTable, sizeof(EFI_ACPI_1_0_ROOT_SYSTEM_DESCRIPTION_POINTER));
             return 0;
         }
 

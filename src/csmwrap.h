@@ -2,6 +2,7 @@
 #define _CSM_WRAP_H
 
 #include <efi.h>
+#include <edk2/Acpi.h>
 #include <edk2/LegacyBios.h>
 #include <edk2/Coreboot.h>
 #include <edk2/E820.h>
