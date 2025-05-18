@@ -17,7 +17,7 @@ EFI_STATUS FindGopPciDevice(struct csmwrap_priv *priv)
     EFI_GRAPHICS_OUTPUT_PROTOCOL *Gop;
 
     // Get all handles that support GOP
-    Status = BS->LocateHandleBuffer(
+    Status = gBS->LocateHandleBuffer(
                     ByProtocol,
                     &gopGuid,
                     NULL,
@@ -32,7 +32,7 @@ EFI_STATUS FindGopPciDevice(struct csmwrap_priv *priv)
     // Iterate through each GOP handle
     for (HandleIndex = 0; HandleIndex < HandleCount; HandleIndex++) {
         // Get the GOP protocol
-        Status = BS->HandleProtocol(
+        Status = gBS->HandleProtocol(
                         HandleBuffer[HandleIndex],
                         &gopGuid,
                         (VOID**)&Gop
@@ -48,23 +48,23 @@ EFI_STATUS FindGopPciDevice(struct csmwrap_priv *priv)
     if (priv->gop == NULL) {
         printf("No GOP handle found\n");
         // Free the handle buffer
-        BS->FreePool(HandleBuffer);
+        gBS->FreePool(HandleBuffer);
         goto Out;
     }
 
-    Status = BS->HandleProtocol(
+    Status = gBS->HandleProtocol(
                     HandleBuffer[HandleIndex],
                     &DevicePathGuid,
                     (VOID**)&DevicePath
                     );
     // We are done with previous handle buffer atm
-    BS->FreePool(HandleBuffer);
+    gBS->FreePool(HandleBuffer);
     if (EFI_ERROR(Status)) {
         printf("Failed to get Device Path protocol: %d\n", Status);
         goto Out;
     }
 
-    Status = BS->LocateDevicePath(
+    Status = gBS->LocateDevicePath(
         &PciIoGuid,
         &DevicePath,
         &Handle
@@ -75,7 +75,7 @@ EFI_STATUS FindGopPciDevice(struct csmwrap_priv *priv)
         goto Out;
     }
 
-    Status = BS->HandleProtocol(
+    Status = gBS->HandleProtocol(
                     Handle,
                     &PciIoGuid,
                     (VOID**)&PciIo

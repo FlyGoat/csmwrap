@@ -35,6 +35,9 @@ NASMFLAGS := -F dwarf -g
 # User controllable linker flags. We set none by default.
 LDFLAGS :=
 
+# User controllable version string.
+BUILD_VERSION := $(shell git describe --tags --always --dirty 2>/dev/null || echo "Unknown")
+
 # Check if CC is Clang.
 override CC_IS_CLANG := $(shell ! $(CC) --version 2>/dev/null | grep 'clang' >/dev/null 2>&1; echo $$?)
 
@@ -65,6 +68,7 @@ endif
 override CPPFLAGS := \
     -I src \
     -I nyu-efi/inc \
+    -DBUILD_VERSION=\"$(BUILD_VERSION)\" \
     -isystem freestnd-c-hdrs \
     $(CPPFLAGS) \
     -MMD \

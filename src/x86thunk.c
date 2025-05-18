@@ -10,7 +10,7 @@
 
 #include <libc.h>
 #include <printf.h>
-#include "x86thunk.h"
+#include "csmwrap.h"
 
 // FIXME: Are we going to implement it?
 #define ASSERT(x)
@@ -252,7 +252,7 @@ THUNK_CONTEXT  mThunkContext;
 
 bool InternalLegacyBiosFarCall (uint16_t Segment, uint16_t Offset, EFI_IA32_REGISTER_SET *Regs, void *Stack, uintptr_t StackSize)
 {
-  uintptr_t                 Status;
+//  uintptr_t                 Status;
   uint16_t                *Stack16;
 //  EFI_TPL               OriginalTpl;
   IA32_REGISTER_SET     ThunkRegSet;
@@ -300,7 +300,7 @@ bool InternalLegacyBiosFarCall (uint16_t Segment, uint16_t Offset, EFI_IA32_REGI
   //
   // The call to Legacy16 is a critical section to EFI
   //
-  // OriginalTpl = gBS->RaiseTPL (TPL_HIGH_LEVEL);
+  // OriginalTpl = ggBS->RaiseTPL (TPL_HIGH_LEVEL);
 
   //
   // Check to see if there is more than one HW interrupt registers with the CPU AP.
@@ -389,7 +389,7 @@ bool InternalLegacyBiosFarCall (uint16_t Segment, uint16_t Offset, EFI_IA32_REGI
   //
   // End critical section
   //
-  // gBS->RestoreTPL (OriginalTpl);
+  // ggBS->RestoreTPL (OriginalTpl);
 
   //
   // OPROM may allocate EBDA range by itself and change EBDA base and EBDA size.
@@ -469,7 +469,7 @@ bool LegacyBiosInt86(uint8_t BiosInt, EFI_IA32_REGISTER_SET *Regs)
   Regs->X.Flags.TF        = 0;
   Regs->X.Flags.CF        = 0;
 
-#if 0
+
   //
   // The base address of legacy interrupt vector table is 0.
   // We use this base address to get the legacy interrupt handler.
@@ -478,7 +478,6 @@ bool LegacyBiosInt86(uint8_t BiosInt, EFI_IA32_REGISTER_SET *Regs)
     Segment = (UINT16)(((UINT32 *)0)[BiosInt] >> 16);
     Offset  = (UINT16)((UINT32 *)0)[BiosInt];
     );
-#endif
 
   return InternalLegacyBiosFarCall (
            Segment,

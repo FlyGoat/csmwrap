@@ -8,8 +8,8 @@
 #include <libc.h>
 #include "x86thunk.h"
 
-extern EFI_SYSTEM_TABLE *ST;
-extern EFI_BOOT_SERVICES *BS;
+extern EFI_SYSTEM_TABLE *gST;
+extern EFI_BOOT_SERVICES *gBS;
 
 struct csmwrap_priv {
     uint8_t *csm_bin;
@@ -86,5 +86,15 @@ struct low_stub {
 #define ALIGN_UP(x, a)          ALIGN((x), (a))
 #define ALIGN_DOWN(x, a)        ((x) & ~((__typeof__(x))(a)-1UL))
 #define IS_ALIGNED(x, a)        (((x) & ((__typeof__(x))(a)-1UL)) == 0)
+
+#ifdef ACCESS_PAGE0_CODE
+#  undef ACCESS_PAGE0_CODE
+#endif
+
+#define ACCESS_PAGE0_CODE(statements)                           \
+  do {                                                          \
+    statements;                                                 \
+                                                                \
+  } while (FALSE)
 
 #endif

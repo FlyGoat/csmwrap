@@ -40,7 +40,7 @@
      uint32_t granularity;
      
      /* Look for the Legacy Region 2 Protocol */
-     status = BS->LocateProtocol(
+     status = gBS->LocateProtocol(
          &gEfiLegacyRegion2ProtocolGuid,
          NULL,
          (void **)&legacy_region
@@ -233,7 +233,7 @@
      EFI_STATUS status;
      
      /* First, try to use the Legacy Region 2 Protocol */
-     status = BS->LocateProtocol(
+     status = gBS->LocateProtocol(
          &gEfiLegacyRegion2ProtocolGuid,
          NULL,
          (void **)&legacy_region

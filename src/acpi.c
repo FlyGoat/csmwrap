@@ -27,9 +27,9 @@ int copy_rsdt(struct csmwrap_priv *priv)
     void *table_target = priv->csm_bin + (priv->csm_efi_table->AcpiRsdPtrPointer - priv->csm_bin_base);
 
 
-    for (i = 0; i < ST->NumberOfTableEntries; i++) {
+    for (i = 0; i < gST->NumberOfTableEntries; i++) {
         EFI_CONFIGURATION_TABLE *table;
-        table = ST->ConfigurationTable + i;
+        table = gST->ConfigurationTable + i;
 
         if (!efi_guidcmp(table->VendorGuid, acpi2Guid)) {
             printf("Found ACPI 2.0 RSDT at %x, copied to %x\n", (uintptr_t)table->VendorTable, (uintptr_t)table_target);

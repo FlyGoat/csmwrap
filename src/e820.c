@@ -54,7 +54,7 @@ int build_e820_map(struct csmwrap_priv *priv)
     uint32_t e820_entries = 0;
     
     /* First call to get the buffer size */
-    status = BS->GetMemoryMap(&memory_map_size, NULL, &map_key, &descriptor_size, &descriptor_version);
+    status = gBS->GetMemoryMap(&memory_map_size, NULL, &map_key, &descriptor_size, &descriptor_version);
     if (status != EFI_BUFFER_TOO_SMALL) {
         printf("Unexpected GetMemoryMap status: %lx\n", status);
         return -1;
@@ -64,17 +64,17 @@ int build_e820_map(struct csmwrap_priv *priv)
     memory_map_size += descriptor_size * 10;
     
     /* Allocate memory for the UEFI memory map */
-    status = BS->AllocatePool(EfiLoaderData, memory_map_size, (void **)&memory_map);
+    status = gBS->AllocatePool(EfiLoaderData, memory_map_size, (void **)&memory_map);
     if (EFI_ERROR(status)) {
         printf("Failed to allocate memory for memory map: %lx\n", status);
         return -1;
     }
     
     /* Get the actual memory map */
-    status = BS->GetMemoryMap(&memory_map_size, memory_map, &map_key, &descriptor_size, &descriptor_version);
+    status = gBS->GetMemoryMap(&memory_map_size, memory_map, &map_key, &descriptor_size, &descriptor_version);
     if (EFI_ERROR(status)) {
         printf("Failed to get memory map: %lx\n", status);
-        BS->FreePool(memory_map);
+        gBS->FreePool(memory_map);
         return -1;
     }
     
@@ -115,7 +115,7 @@ int build_e820_map(struct csmwrap_priv *priv)
     }
     
     /* Free the UEFI memory map */
-    BS->FreePool(memory_map);
+    gBS->FreePool(memory_map);
     
     /* Save the number of entries in the low_stub */
     priv->low_stub->e820_entries = e820_entries;
