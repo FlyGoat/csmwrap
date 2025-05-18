@@ -116,6 +116,7 @@ override LDFLAGS += \
     -z text \
     -z max-page-size=0x1000 \
     -Wl,--gc-sections \
+    -Wl,-z,execstack \
     -T nyu-efi/src/elf_$(ARCH)_efi.lds
 
 # Use "find" to glob all *.c, *.S, and *.asm{32,64} files in the tree and obtain the
