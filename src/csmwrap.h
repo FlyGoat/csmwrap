@@ -15,7 +15,6 @@ extern EFI_BOOT_SERVICES *gBS;
 
 struct csmwrap_priv {
     uint8_t *csm_bin;
-    uint8_t *vgabios_bin;
 
     EFI_COMPATIBILITY16_TABLE *csm_efi_table;
     uintptr_t csm_bin_base;
@@ -30,8 +29,7 @@ struct csmwrap_priv {
 };
 
 extern int unlock_bios_region();
-extern int csmwrap_video_init(struct csmwrap_priv *priv);
-extern int csmwrap_video_fallback(struct csmwrap_priv *priv);
+extern EFI_STATUS csmwrap_video_init(struct csmwrap_priv *priv);
 extern int build_coreboot_table(struct csmwrap_priv *priv);
 extern int copy_rsdt(struct csmwrap_priv *priv);
 int build_e820_map(struct csmwrap_priv *priv);
