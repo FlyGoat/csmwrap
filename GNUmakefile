@@ -48,9 +48,10 @@ BUILD_VERSION := $(shell git describe --tags --always --dirty 2>/dev/null || ech
 # Check if CC is Clang.
 override CC_IS_CLANG := $(shell ! $(CC) --version 2>/dev/null | grep 'clang' >/dev/null 2>&1; echo $$?)
 
-# Save user CFLAGS and CPPFLAGS before we append internal flags.
+# Save user CFLAGS, CPPFLAGS, and LDFLAGS before we append internal flags.
 override USER_CFLAGS := $(CFLAGS)
 override USER_CPPFLAGS := $(CPPFLAGS)
+override USER_LDFLAGS := $(LDFLAGS)
 
 # Internal C flags that should not be changed by the user.
 override CFLAGS += \
@@ -259,3 +260,22 @@ clean:
 .PHONY: distclean
 distclean:
 	rm -rf bin-* obj-* ovmf
+
+# SeaBIOS build target.
+.PHONY: seabios
+seabios:
+	cp seabios-config seabios/.config
+	$(MAKE) -C seabios olddefconfig \
+		CC="$(CC)" \
+		OBJCOPY="$(OBJCOPY)" \
+		CFLAGS="$(USER_CFLAGS)" \
+		CPPFLAGS="$(USER_CPPFLAGS)" \
+		LDFLAGS="$(USER_LDFLAGS)"
+	$(MAKE) -C seabios \
+		CC="$(CC)" \
+		OBJCOPY="$(OBJCOPY)" \
+		CFLAGS="$(USER_CFLAGS)" \
+		CPPFLAGS="$(USER_CPPFLAGS)" \
+		LDFLAGS="$(USER_LDFLAGS)"
+	cd seabios/out && xxd -i Csm16.bin >../../src/bins/Csm16.h
+	cd seabios/out && xxd -i vgabios.bin >../../src/bins/vgabios.h

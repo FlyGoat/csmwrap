@@ -10,3 +10,6 @@
 [submodule "nanoprintf"]
 	path = nanoprintf
 	url = https://github.com/charlesnicholson/nanoprintf.git
+[submodule "seabios"]
+	path = seabios
+	url = https://github.com/FlyGoat/seabios-csmwrap.git
