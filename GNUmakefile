@@ -17,11 +17,18 @@ endif
 # Default user QEMU flags. These are appended to the QEMU command calls.
 QEMUFLAGS := -m 2G
 
+# User controllable cross compiler prefix.
+CROSS_PREFIX :=
+
 # User controllable C compiler command.
-CC := cc
+ifneq ($(CROSS_PREFIX),)
+    CC := $(CROSS_PREFIX)gcc
+else
+    CC := cc
+endif
 
 # User controllable objcopy command.
-OBJCOPY := objcopy
+OBJCOPY := $(CROSS_PREFIX)objcopy
 
 # User controllable C flags.
 CFLAGS := -g -O2 -pipe
