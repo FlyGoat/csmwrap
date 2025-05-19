@@ -396,9 +396,13 @@ EFI_STATUS csmwrap_video_seavgabios_init(struct csmwrap_priv *priv)
 {
     struct cb_framebuffer *cb_fb = &priv->cb_fb;
     EFI_STATUS status;
-    EFI_GRAPHICS_OUTPUT_PROTOCOL *gop = NULL;
+    EFI_GRAPHICS_OUTPUT_PROTOCOL *gop = priv->gop;
     EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *info = NULL;
     UINTN isiz = sizeof(EFI_GRAPHICS_OUTPUT_MODE_INFORMATION), currentMode;
+
+    if (!gop) {
+        return EFI_UNSUPPORTED;
+    }
 
     /* FIXME: What if it's not a VBE mode? */
     currentMode = gop->Mode ? gop->Mode->Mode : 0;
