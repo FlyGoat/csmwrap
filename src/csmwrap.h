@@ -6,6 +6,7 @@
 #include <edk2/LegacyBios.h>
 #include <edk2/Coreboot.h>
 #include <edk2/E820.h>
+#include <edk2/Pci.h>
 #include <libc.h>
 #include "x86thunk.h"
 
