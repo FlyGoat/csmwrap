@@ -268,6 +268,7 @@ int unlock_bios_region(void)
                     status = unlock_piix4_pam();
                     break;
                 case 0x29C0: /* Q35 (QEMU) */
+                case 0x29E0: /* X38/X48 (VirtualBox) */
                     status = unlock_q35_pam();
                     break;
                 default:
