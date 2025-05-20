@@ -42,7 +42,7 @@ efi_guidcmp (EFI_GUID left, EFI_GUID right)
 }
 
 
-#define E820_MAX_ENTRIES 32
+#define E820_MAX_ENTRIES 128
 
 #pragma pack(1)
 struct low_stub {
