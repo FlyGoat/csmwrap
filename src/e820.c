@@ -147,6 +147,7 @@ e820_remove(struct csmwrap_priv *priv, uint64_t start, uint64_t size)
 
 /*
  * Convert UEFI memory types to E820 types
+ * See https://uefi.org/sites/default/files/resources/ACPI_4_Errata_A.pdf Table 14-6
  */
 static uint32_t convert_memory_type(EFI_MEMORY_TYPE type)
 {
@@ -159,17 +160,18 @@ static uint32_t convert_memory_type(EFI_MEMORY_TYPE type)
             return EfiAcpiAddressRangeNVS;
         case EfiUnusableMemory:
             return EfiAcpiAddressRangeUnusable;
+        case EfiLoaderCode:
+        case EfiLoaderData:
+            return EfiAcpiAddressRangeMemory;
+         /* FIXME: Report BootService memory will cause 0xA5 BSOD, why????  */
+        case EfiBootServicesCode:
+        case EfiBootServicesData:
+        case EfiReservedMemoryType:
         case EfiRuntimeServicesCode:
         case EfiRuntimeServicesData:
         case EfiMemoryMappedIO:
         case EfiMemoryMappedIOPortSpace:
         case EfiPalCode:
-        /* FIXME Those should be usable ? */
-        case EfiLoaderCode:
-        case EfiLoaderData:
-        case EfiBootServicesCode:
-        case EfiBootServicesData:
-        case EfiReservedMemoryType:
         default:
             return EfiAcpiAddressRangeReserved;
     }
