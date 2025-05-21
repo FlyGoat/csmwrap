@@ -21,8 +21,52 @@ static EFI_GUID gEfiLegacyRegion2ProtocolGuid = EFI_LEGACY_REGION2_PROTOCOL_GUID
 #define PAM_LOCK_REG   0x80    /* Register containing PAM lock bit on newer Intel chipsets */
 #define PAM_ENABLE     0x33    /* Value to enable read/write (0x30 for read, 0x03 for write) */
 
+
+/*
+ * AMD MTRRs for Legacy Region
+ * This is already here since AMD64
+ */
+#define AMD_AP_MTRR_VARIABLE_BASE0              0x200
+#define AMD_AP_MTRR_VARIABLE_BASE6              0x20C
+#define AMD_AP_MTRR_FIX64k_00000                0x250
+#define AMD_AP_MTRR_FIX16k_80000                0x258
+#define AMD_AP_MTRR_FIX16k_A0000                0x259
+#define AMD_AP_MTRR_FIX4k_C0000                 0x268
+#define AMD_AP_MTRR_FIX4k_C8000                 0x269
+#define AMD_AP_MTRR_FIX4k_D0000                 0x26A
+#define AMD_AP_MTRR_FIX4k_D8000                 0x26B
+#define AMD_AP_MTRR_FIX4k_E0000                 0x26C
+#define AMD_AP_MTRR_FIX4k_E8000                 0x26D
+#define AMD_AP_MTRR_FIX4k_F0000                 0x26E
+#define AMD_AP_MTRR_FIX4k_F8000                 0x26F
+
+#define AMD_MTRR_FIX64K_WB_DRAM                 0x1E1E1E1E1E1E1E1Eull
+#define AMD_MTRR_FIX64K_WT_DRAM                 0x1C1C1C1C1C1C1C1Cull
+#define AMD_MTRR_FIX64K_UC_DRAM                 0x1818181818181818ull
+#define AMD_MTRR_FIX16K_WB_DRAM                 0x1E1E1E1E1E1E1E1Eull
+#define AMD_MTRR_FIX16K_WT_DRAM                 0x1C1C1C1C1C1C1C1Cull
+#define AMD_MTRR_FIX16K_UC_DRAM                 0x1818181818181818ull
+#define AMD_MTRR_FIX4K_WB_DRAM                  0x1E1E1E1E1E1E1E1Eull
+#define AMD_MTRR_FIX4K_WT_DRAM                  0x1C1C1C1C1C1C1C1Cull
+#define AMD_MTRR_FIX4K_UC_DRAM                  0x1818181818181818ull
+
+#define MSR_SYS_CFG                         0xC0010010ul
+#define SYS_CFG_MTRR_FIX_DRAM_EN            (1 << 18) ///< Core::X86::Msr::SYS_CFG::MtrrFixDramEn.
+                                                       ///< MTRR fixed RdDram and WrDram attributes enable.
+#define SYS_CFG_MTRR_FIX_DRAM_MOD_EN        (1 << 19) ///< Core::X86::Msr::SYS_CFG::MtrrFixDramModEn.
+                                                       ///< MTRR fixed RdDram and WrDram modification enable.
+#define SYS_CFG_MTRR_VAR_DRAM_EN            (1 << 20) ///< Core::X86::Msr::SYS_CFG::MtrrVarDramEn.
+                                                       ///< MTRR variable DRAM enable.
+#define SYS_CFG_MTRR_TOM2_EN                (1 << 21) ///< Core::X86::Msr::SYS_CFG::MtrrTom2En. MTRR
+                                                       ///< top of memory 2 enable.
+#define SYS_CFG_TOM2_FORCE_MEM_TYPE_WB      (1 << 22) ///< Core::X86::Msr::SYS_CFG::Tom2ForceMemTypeWB.
+                                                       ///< top of memory 2 memory type write back.
+
 /* Intel PCI Vendor ID */
 #define INTEL_VENDOR_ID 0x8086
+
+/* AMD Vendor ID */
+#define AMD_VENDOR_ID   0x1022
 
 /**
  * Unlock BIOS memory region using the Legacy Region 2 Protocol
@@ -156,6 +200,43 @@ int unlock_skylake_pam(void)
 }
 
 /**
+ * Unlock BIOS region using fixed MTRR for AMD chipsets
+ *
+ * @return 0 on success, -1 on failure
+ */
+int unlock_amd_mtrr(void)
+{
+    uint64_t val;
+    printf("Unlocking BIOS region with AMD MTRR\n");
+
+    /* TODO: Investigate SMP impact */
+    val = rdmsr(MSR_SYS_CFG);
+    val |= SYS_CFG_MTRR_FIX_DRAM_MOD_EN;
+    wrmsr(MSR_SYS_CFG, val);
+
+    /* Set all to WB */
+    wrmsr(AMD_AP_MTRR_FIX64k_00000, AMD_MTRR_FIX64K_WB_DRAM);
+    wrmsr(AMD_AP_MTRR_FIX16k_80000, AMD_MTRR_FIX16K_WB_DRAM);
+    /* A0000 map to UC IO */
+    wrmsr(AMD_AP_MTRR_FIX16k_A0000, 0x0);
+    wrmsr(AMD_AP_MTRR_FIX4k_C0000, AMD_MTRR_FIX4K_WB_DRAM);
+    wrmsr(AMD_AP_MTRR_FIX4k_C8000, AMD_MTRR_FIX4K_WB_DRAM);
+    wrmsr(AMD_AP_MTRR_FIX4k_D0000, AMD_MTRR_FIX4K_WB_DRAM);
+    wrmsr(AMD_AP_MTRR_FIX4k_D8000, AMD_MTRR_FIX4K_WB_DRAM);
+    wrmsr(AMD_AP_MTRR_FIX4k_E0000, AMD_MTRR_FIX4K_WB_DRAM);
+    wrmsr(AMD_AP_MTRR_FIX4k_E8000, AMD_MTRR_FIX4K_WB_DRAM);
+    wrmsr(AMD_AP_MTRR_FIX4k_F0000, AMD_MTRR_FIX4K_WB_DRAM);
+    wrmsr(AMD_AP_MTRR_FIX4k_F8000, AMD_MTRR_FIX4K_WB_DRAM);
+
+    val = rdmsr(MSR_SYS_CFG);
+    val &= ~SYS_CFG_MTRR_FIX_DRAM_MOD_EN;
+    val |= SYS_CFG_MTRR_FIX_DRAM_EN;
+    wrmsr(MSR_SYS_CFG, val);
+
+    return 0;
+}
+
+/**
  * Get information about the legacy region and display it
  *
  * @param legacy_region Legacy Region 2 Protocol instance
@@ -275,6 +356,10 @@ int unlock_bios_region(void)
                     status = unlock_skylake_pam();
                     break;
             }
+            break;
+        case AMD_VENDOR_ID:
+            /* AMD chipsets */
+            status = unlock_amd_mtrr();
             break;
         default:
             status = EFI_UNSUPPORTED;

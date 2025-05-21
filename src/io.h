@@ -242,5 +242,17 @@ static inline void pciConfigWriteDWord(unsigned int bus, unsigned int slot,
     outl(PCI_CONFIG_DATA, data);
 }
 
+static inline uint64_t rdmsr(uint32_t index)
+{
+    uint64_t ret;
+    asm ("rdmsr" : "=A"(ret) : "c"(index));
+    return ret;
+}
+
+static inline void wrmsr(uint32_t index, uint64_t val)
+{
+    asm volatile ("wrmsr" : : "c"(index), "A"(val));
+}
+
 
 #endif
