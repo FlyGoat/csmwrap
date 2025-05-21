@@ -131,9 +131,8 @@ test_pit:
 
 int apply_intel_platform_workarounds(void)
 {
-    uint16_t device_id, vendor_id;
+    uint16_t vendor_id;
 
-    device_id = pciConfigReadWord(0, 0, 0, 0x2);
     vendor_id = pciConfigReadWord(0, 0, 0, 0x0);
 
     if (vendor_id != 0x8086) {
