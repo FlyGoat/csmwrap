@@ -46,7 +46,7 @@ NASMFLAGS := -F dwarf -g
 LDFLAGS :=
 
 # User controllable version string.
-BUILD_VERSION := $(shell git describe --tags --always --dirty 2>/dev/null || echo "Unknown")
+BUILD_VERSION := $(shell git describe --tags --always 2>/dev/null || echo "Unknown")
 
 # Check if CC is Clang.
 override CC_IS_CLANG := $(shell ! $(CC) --version 2>/dev/null | grep 'clang' >/dev/null 2>&1; echo $$?)
