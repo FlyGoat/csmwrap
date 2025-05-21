@@ -50,14 +50,35 @@
 #define PM_READ_VALUE       (1<<4)
 #define PM_READ_STATUS      (2<<4)
 
+#define PCH_P2SB_E0		0xe0
+#define HIDE_BIT		(1 << 0)
+
 static int pit_8254cge_workaround(void)
 {
+    uint8_t reg8;
     uint32_t reg;
     uint64_t base;
+    bool p2sb_hide = false;
 
     reg = pciConfigReadDWord(0, PCI_DEVICE_NUMBER_PCH_P2SB,
                              PCI_FUNCTION_NUMBER_PCH_P2SB,
                              0x0);
+
+    /* P2SB maybe hidden, try unhide it first */
+    if ((reg & 0xFFFF) == 0xffff) {
+        reg8 = pciConfigReadByte(0, PCI_DEVICE_NUMBER_PCH_P2SB,
+                                 PCI_FUNCTION_NUMBER_PCH_P2SB,
+                                 PCH_P2SB_E0 + 1);
+        reg8 &= ~HIDE_BIT;
+        pciConfigWriteByte(0, PCI_DEVICE_NUMBER_PCH_P2SB,
+                            PCI_FUNCTION_NUMBER_PCH_P2SB,
+                            PCH_P2SB_E0 + 1, reg8);
+        p2sb_hide = true;
+    }
+
+    reg = pciConfigReadDWord(0, PCI_DEVICE_NUMBER_PCH_P2SB,
+                              PCI_FUNCTION_NUMBER_PCH_P2SB,
+                              0x0);
 
     if ((reg & 0xFFFF) != 0x8086) {
         printf("No P2SB found, proceed to PIT test\n");
@@ -80,6 +101,17 @@ static int pit_8254cge_workaround(void)
     /* Disable 8254CGE */
     reg &= ~B_PCH_PCR_ITSS_ITSSPRC_8254CGE;
     writel(PCH_PCR_ADDRESS(base, PID_ITSS, R_PCH_PCR_ITSS_ITSSPRC), reg);
+
+    /* Hide P2SB again */
+    if (p2sb_hide) {
+        reg8 = pciConfigReadByte(0, PCI_DEVICE_NUMBER_PCH_P2SB,
+                                 PCI_FUNCTION_NUMBER_PCH_P2SB,
+                                 PCH_P2SB_E0 + 1);
+        reg8 |= HIDE_BIT;
+        pciConfigWriteByte(0, PCI_DEVICE_NUMBER_PCH_P2SB,
+                            PCI_FUNCTION_NUMBER_PCH_P2SB,
+                            PCH_P2SB_E0 + 1, reg8);
+    }
 
 test_pit:
     /* Lets hope we will not BOOM UEFI with this */
