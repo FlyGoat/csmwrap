@@ -130,6 +130,8 @@ EFI_STATUS efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
         return -1;
     }
 
+    apply_intel_platform_workarounds();
+
     csm_bin_base = (uintptr_t)BIOSROM_END - sizeof(Csm16_bin);
     priv.csm_bin_base = csm_bin_base;
     printf("csm_bin_base: 0x%lx\n", csm_bin_base);

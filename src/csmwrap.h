@@ -33,6 +33,7 @@ extern EFI_STATUS csmwrap_video_init(struct csmwrap_priv *priv);
 extern int build_coreboot_table(struct csmwrap_priv *priv);
 extern int copy_rsdt(struct csmwrap_priv *priv);
 int build_e820_map(struct csmwrap_priv *priv);
+int apply_intel_platform_workarounds(void);
 
 
 static inline int
