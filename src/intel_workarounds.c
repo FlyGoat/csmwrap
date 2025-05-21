@@ -57,7 +57,7 @@ static int pit_8254cge_workaround(void)
 {
     uint8_t reg8;
     uint32_t reg;
-    uint64_t base;
+    unsigned long base;
     bool p2sb_hide = false;
 
     reg = pciConfigReadDWord(0, PCI_DEVICE_NUMBER_PCH_P2SB,
@@ -93,7 +93,14 @@ static int pit_8254cge_workaround(void)
     reg = pciConfigReadDWord(0, PCI_DEVICE_NUMBER_PCH_P2SB,
                               PCI_FUNCTION_NUMBER_PCH_P2SB,
                               SBREG_BARH);
+#ifdef __LP64__
     base |= ((uint64_t)reg & 0xFFFFFFFF) << 32;
+#else
+    if (reg) {
+        printf("Invalid P2SB BARH\n");
+        goto test_pit;
+    }
+#endif
 
     /* FIXME: Validate base */
     reg = readl(PCH_PCR_ADDRESS(base, PID_ITSS, R_PCH_PCR_ITSS_ITSSPRC));
