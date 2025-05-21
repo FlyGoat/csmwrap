@@ -18,7 +18,8 @@ endif
 QEMUFLAGS := -m 2G
 
 # User controllable cross compiler prefix.
-CROSS_PREFIX :=
+CROSS_COMPILE :=
+CROSS_PREFIX := $(CROSS_COMPILE)
 
 # User controllable C compiler command.
 ifneq ($(CROSS_PREFIX),)
@@ -29,6 +30,8 @@ endif
 
 # User controllable objcopy command.
 OBJCOPY := $(CROSS_PREFIX)objcopy
+OBJDUMP := $(CROSS_PREFIX)objdump
+STRIP := $(CROSS_PREFIX)strip
 
 # User controllable C flags.
 CFLAGS := -g -O2 -pipe
@@ -262,20 +265,28 @@ distclean:
 	rm -rf bin-* obj-* ovmf
 
 # SeaBIOS build target.
+SEABIOS_EXTRAVERSION := -CSMWrap-$(BUILD_VERSION)
 .PHONY: seabios
 seabios:
 	cp seabios-config seabios/.config
 	$(MAKE) -C seabios olddefconfig \
 		CC="$(CC)" \
 		OBJCOPY="$(OBJCOPY)" \
+		OBJDUMP="$(OBJDUMP)" \
+		STRIP="$(STRIP)" \
 		CFLAGS="$(USER_CFLAGS)" \
 		CPPFLAGS="$(USER_CPPFLAGS)" \
-		LDFLAGS="$(USER_LDFLAGS)"
+		LDFLAGS="$(USER_LDFLAGS)" \
+		EXTRAVERSION=\"$(SEABIOS_EXTRAVERSION)\"
 	$(MAKE) -C seabios \
 		CC="$(CC)" \
 		OBJCOPY="$(OBJCOPY)" \
+		OBJDUMP="$(OBJDUMP)" \
+		STRIP="$(STRIP)" \
+		OBJCOPY="$(OBJCOPY)" \
 		CFLAGS="$(USER_CFLAGS)" \
 		CPPFLAGS="$(USER_CPPFLAGS)" \
-		LDFLAGS="$(USER_LDFLAGS)"
+		LDFLAGS="$(USER_LDFLAGS)" \
+		EXTRAVERSION=\"$(SEABIOS_EXTRAVERSION)\"
 	cd seabios/out && xxd -i Csm16.bin >../../src/bins/Csm16.h
 	cd seabios/out && xxd -i vgabios.bin >../../src/bins/vgabios.h
