@@ -398,6 +398,7 @@ EFI_STATUS csmwrap_video_oprom_init(struct csmwrap_priv *priv)
 EFI_STATUS csmwrap_video_seavgabios_init(struct csmwrap_priv *priv)
 {
     struct cb_framebuffer *cb_fb = &priv->cb_fb;
+    unsigned long fb_addr = 0;
     EFI_STATUS status;
     EFI_GRAPHICS_OUTPUT_PROTOCOL *gop = priv->gop;
     EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *info = NULL;
@@ -430,20 +431,23 @@ EFI_STATUS csmwrap_video_seavgabios_init(struct csmwrap_priv *priv)
         info->PixelFormat==PixelBlueGreenRedReserved8BitPerColor?0xff:(
         info->PixelFormat==PixelBitMask?info->PixelInformation.BlueMask:0)));
 
-    printf("EFI Framebuffer: %x\n", gop->Mode->FrameBufferBase);
+    fb_addr = (unsigned long)gop->Mode->FrameBufferBase;
 
-    cb_fb->physical_address = gop->Mode->FrameBufferBase;
+    printf("EFI Framebuffer: %lx\n", fb_addr);
 
-    if (!cb_fb->physical_address) {
+    if (!fb_addr) {
         printf("Framebuffer invalid.\n");
         return EFI_UNSUPPORTED;
     }
 
-    if (gop->Mode->FrameBufferBase > 0xffffffff) {
+#ifdef __LP64__
+    if (fb_addr > 0xffffffff) {
         printf("Framebuffer is too high, try Disabling Above 4G \n");
         return EFI_UNSUPPORTED;
     }
+#endif
 
+    cb_fb->physical_address = fb_addr;
     cb_fb->x_resolution = info->HorizontalResolution;
     cb_fb->y_resolution = info->VerticalResolution;
     /* Always 32 bbp */
