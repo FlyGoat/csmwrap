@@ -45,6 +45,7 @@ static EFI_STATUS FindGopPciDevice(struct csmwrap_priv *priv)
         }
 
         priv->gop = Gop;
+        priv->gop_handle = HandleBuffer[HandleIndex];
         break;
     }
 
@@ -387,6 +388,8 @@ EFI_STATUS csmwrap_video_oprom_init(struct csmwrap_priv *priv)
 
     memcpy((void*)VGABIOS_START, LocalRomImage, LocalRomSize);
 
+    priv->video_type = CSMWRAP_VIDEO_OPROM;
+
     printf("Video Initialisation Succeed with OpROM\n");
 
     return 0;
@@ -489,6 +492,8 @@ EFI_STATUS csmwrap_video_seavgabios_init(struct csmwrap_priv *priv)
     /* Copy VGA BIOS to location */
     memcpy((void*)VGABIOS_START, vgabios_bin, sizeof(vgabios_bin));
 
+    priv->video_type = CSMWRAP_VIDEO_SEAVGABIOS;
+
     printf("Video Initialisation Succeed with SeaVGABIOS GOP\n");
 
     return 0;
@@ -516,9 +521,45 @@ EFI_STATUS csmwrap_video_fallback(struct csmwrap_priv *priv)
     /* Copy VGA BIOS to location */
     memcpy((void*)VGABIOS_START, vgabios_bin, sizeof(vgabios_bin));
 
+    priv->video_type = CSMWRAP_VIDEO_FALLBACK;
+
     printf("WARNING: Using fallback Video, you wont't be able to get display!\n");
 
     return 0;
+}
+
+EFI_STATUS csmwrap_video_prepare_exitbs(struct csmwrap_priv *priv)
+{
+    /*
+     * Unlink Controller before ExitBS, it mat disable FB so we can't
+     * do that for other video types.
+     */
+    if (priv->video_type == CSMWRAP_VIDEO_OPROM) {
+        EFI_STATUS Status;
+
+        if (!priv->gop_handle) {
+            DEBUG((DEBUG_ERROR, "No GOP handle found\n"));
+            return EFI_UNSUPPORTED;
+        }
+
+        if (gBS->Hdr.Revision < EFI_1_10_BOOT_SERVICES_REVISION && !gBS->DisconnectController) {
+            DEBUG((DEBUG_ERROR, "DisconnectController not supported\n"));
+            return EFI_UNSUPPORTED;
+        }
+
+        Status = gBS->DisconnectController(
+                        priv->gop_handle,
+                        NULL,
+                        NULL
+                        );
+
+        if (EFI_ERROR(Status)) {
+            DEBUG((DEBUG_ERROR, "DisconnectController failed: %d\n", Status));
+            return Status;
+        }
+    }
+
+    return EFI_SUCCESS;
 }
 
 EFI_STATUS csmwrap_video_init(struct csmwrap_priv *priv)

@@ -189,6 +189,9 @@ EFI_STATUS efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
     printf("CALL16 %x:%x\n", priv.csm_efi_table->Compatibility16CallSegment,
             priv.csm_efi_table->Compatibility16CallOffset);
 
+    /* WARNING: No EFI Video afterwards */
+    csmwrap_video_prepare_exitbs(&priv);
+
     /* WARNING: No EFI runtime service afterwards */
     UINTN efi_mmap_size = 0, efi_desc_size = 0, efi_mmap_key = 0;
     UINT32 efi_desc_ver = 0;

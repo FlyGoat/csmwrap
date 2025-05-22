@@ -23,6 +23,12 @@ static void _putchar(int character, void *extra_arg) {
     CHAR16 string[2];
     string[0] = character;
     string[1] = 0;
+
+    if (!gST->ConOut || !gST->ConOut->OutputString) {
+        /* No console output available */
+        return;
+    }
+
     gST->ConOut->OutputString(gST->ConOut, string);
 }
 

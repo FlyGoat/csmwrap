@@ -13,6 +13,13 @@
 extern EFI_SYSTEM_TABLE *gST;
 extern EFI_BOOT_SERVICES *gBS;
 
+enum csmwrap_video_type {
+    CSMWRAP_VIDEO_NONE,
+    CSMWRAP_VIDEO_OPROM,
+    CSMWRAP_VIDEO_SEAVGABIOS,
+    CSMWRAP_VIDEO_FALLBACK,
+};
+
 struct csmwrap_priv {
     uint8_t *csm_bin;
 
@@ -21,7 +28,9 @@ struct csmwrap_priv {
     struct low_stub *low_stub;
 
     /* VGA stuff */
+    enum csmwrap_video_type video_type;
     EFI_GRAPHICS_OUTPUT_PROTOCOL *gop;
+    EFI_HANDLE gop_handle;
     EFI_PCI_IO_PROTOCOL *vga_pci_io;
     uint8_t vga_pci_bus;
     uint8_t vga_pci_devfn;
@@ -30,6 +39,7 @@ struct csmwrap_priv {
 
 extern int unlock_bios_region();
 extern EFI_STATUS csmwrap_video_init(struct csmwrap_priv *priv);
+extern EFI_STATUS csmwrap_video_prepare_exitbs(struct csmwrap_priv *priv);
 extern int build_coreboot_table(struct csmwrap_priv *priv);
 extern int copy_rsdt(struct csmwrap_priv *priv);
 int build_e820_map(struct csmwrap_priv *priv);
