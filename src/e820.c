@@ -251,7 +251,9 @@ int build_e820_map(struct csmwrap_priv *priv)
     /* Reserve Expansion BIOS */
     e820_add(priv, 0xa0000, 0x100000 - 0xa0000, EfiAcpiAddressRangeReserved);
 
-    dump_map(priv);
+    if (DEBUG_PRINT_LEVEL & DEBUG_VERBOSE) {
+        dump_map(priv);
+    }
 
     return 0;
 }
