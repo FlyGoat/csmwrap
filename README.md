@@ -1,6 +1,6 @@
 # CSMWrap
 
-CSMWrap is a cool little hack that brings back the good old PC BIOS on those fancy-pants UEFI-only systems. It utilises the CSM (Compatibility Support Module) and VESA VBIOS from SeaBIOS Project to emulate a legacy BIOS environment.
+CSMWrap is a cool little hack that brings back the good old PC BIOS on those fancy-pants UEFI-only systems. It utilises the CSM (Compatibility Support Module) and VESA VBIOS from SeaBIOS project to emulate a legacy BIOS environment.
 
 ## Current Status
 
