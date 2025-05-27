@@ -229,6 +229,7 @@ EFI_STATUS efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
 
     /* Copy ROM to location, as late as possible */
     memcpy((void*)csm_bin_base, Csm16_bin, sizeof(Csm16_bin));
+    memcpy((void*)VGABIOS_START, vbios_loc, vbios_size);
 
     memset(&Regs, 0, sizeof(EFI_IA32_REGISTER_SET));
     Regs.X.AX = Legacy16InitializeYourself;
