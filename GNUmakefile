@@ -268,6 +268,7 @@ distclean:
 SEABIOS_EXTRAVERSION := -CSMWrap-$(BUILD_VERSION)
 .PHONY: seabios
 seabios:
+	$(MAKE) -C seabios distclean
 	cp seabios-config seabios/.config
 	$(MAKE) -C seabios olddefconfig \
 		CC="$(CC)" \
