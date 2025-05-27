@@ -122,11 +122,11 @@ static int pit_8254cge_workaround(void)
 
 test_pit:
     /* Lets hope we will not BOOM UEFI with this */
-    outb(PM_SEL_READBACK | PM_READ_VALUE | PM_READ_COUNTER0, PORT_PIT_MODE);
+    outb(PORT_PIT_MODE, PM_SEL_READBACK | PM_READ_VALUE | PM_READ_COUNTER0);
     uint16_t v1 = inb(PORT_PIT_COUNTER0) | (inb(PORT_PIT_COUNTER0) << 8);
 
     gBS->Stall(1000);
-    outb(PM_SEL_READBACK | PM_READ_VALUE | PM_READ_COUNTER0, PORT_PIT_MODE);
+    outb(PORT_PIT_MODE, PM_SEL_READBACK | PM_READ_VALUE | PM_READ_COUNTER0);
     uint16_t v2 = inb(PORT_PIT_COUNTER0) | (inb(PORT_PIT_COUNTER0) << 8);
     if (v1 == v2) {
         printf("PIT test failed, not counting!\n");
