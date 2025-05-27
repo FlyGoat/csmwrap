@@ -45,6 +45,9 @@ extern int copy_rsdt(struct csmwrap_priv *priv);
 int build_e820_map(struct csmwrap_priv *priv);
 int apply_intel_platform_workarounds(void);
 
+extern void *vbios_loc;
+extern uintptr_t vbios_size;
+
 
 static inline int
 efi_guidcmp (EFI_GUID left, EFI_GUID right)
