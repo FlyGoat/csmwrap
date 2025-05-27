@@ -8,7 +8,7 @@
 #include <edk2/E820.h>
 #include <edk2/Pci.h>
 #include <libc.h>
-#include "x86thunk.h"
+#include <x86thunk.h>
 
 extern EFI_SYSTEM_TABLE *gST;
 extern EFI_BOOT_SERVICES *gBS;
@@ -38,15 +38,10 @@ struct csmwrap_priv {
 };
 
 extern int unlock_bios_region();
-extern EFI_STATUS csmwrap_video_init(struct csmwrap_priv *priv);
-extern EFI_STATUS csmwrap_video_prepare_exitbs(struct csmwrap_priv *priv);
 extern int build_coreboot_table(struct csmwrap_priv *priv);
 extern int copy_rsdt(struct csmwrap_priv *priv);
 int build_e820_map(struct csmwrap_priv *priv);
 int apply_intel_platform_workarounds(void);
-
-extern void *vbios_loc;
-extern uintptr_t vbios_size;
 
 
 static inline int
