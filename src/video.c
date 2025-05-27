@@ -371,7 +371,7 @@ EFI_STATUS csmwrap_video_oprom_init(struct csmwrap_priv *priv)
             );
 
     Status = GetPciLegacyRom (
-             3, // ???
+             0x0300, // ???
              PciConfigHeader.Hdr.VendorId,
              PciConfigHeader.Hdr.DeviceId,
              &LocalRomImage,
