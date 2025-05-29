@@ -147,7 +147,7 @@ EFI_STATUS efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
         return -1;
     }
 
-    copy_rsdt(&priv);
+    acpi_init(&priv);
 
     Status = csmwrap_video_init(&priv);
 

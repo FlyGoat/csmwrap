@@ -1,0 +1,17 @@
+#pragma once
+
+#include <uacpi/helpers.h>
+#include <uacpi/log.h>
+
+
+#define UACPI_DEFAULT_LOG_LEVEL UACPI_LOG_INFO
+#define UACPI_DEFAULT_LOOP_TIMEOUT_SECONDS 30
+#define UACPI_DEFAULT_MAX_CALL_STACK_DEPTH 256
+
+#define UACPI_USE_BUILTIN_STRING
+#ifndef __LP64__
+#define UACPI_PHYS_ADDR_IS_32BITS
+#endif
+#define UACPI_BAREBONES_MODE
+#define UACPI_PLAIN_LOG_BUFFER_SIZE 128
+#define UACPI_STATIC_TABLE_ARRAY_LEN 128

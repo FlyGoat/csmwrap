@@ -79,6 +79,8 @@ endif
 override CPPFLAGS := \
     -I src \
     -I nyu-efi/inc \
+    -I uACPI/include \
+    -DUACPI_OVERRIDE_CONFIG \
     -DBUILD_VERSION=\"$(BUILD_VERSION)\" \
     -isystem freestnd-c-hdrs \
     $(CPPFLAGS) \
@@ -137,6 +139,7 @@ override LDFLAGS += \
 # Use "find" to glob all *.c, *.S, and *.asm{32,64} files in the tree and obtain the
 # object and header dependency file names.
 override SRCFILES := $(shell cd src && find -L * -type f | LC_ALL=C sort)
+override SRCFILES += $(shell find -L uACPI/source -type f | LC_ALL=C sort)
 override CFILES := $(filter %.c,$(SRCFILES))
 override ASFILES := $(filter %.S,$(SRCFILES))
 ifeq ($(ARCH),ia32)
@@ -187,6 +190,10 @@ bin-$(ARCH)/$(OUTPUT).efi: bin-$(ARCH)/$(OUTPUT) GNUmakefile
 bin-$(ARCH)/$(OUTPUT): GNUmakefile nyu-efi/src/elf_$(ARCH)_efi.lds nyu-efi/src/crt0-efi-$(ARCH).S.o nyu-efi/src/reloc_$(ARCH).c.o $(OBJ)
 	mkdir -p "$$(dirname $@)"
 	$(CC) $(CFLAGS) $(LDFLAGS) nyu-efi/src/crt0-efi-$(ARCH).S.o nyu-efi/src/reloc_$(ARCH).c.o $(OBJ) -o $@
+
+obj-$(ARCH)/uACPI/source/%.c.o: uACPI/source/%.c GNUmakefile
+	mkdir -p "$$(dirname $@)"
+	$(CC) $(CFLAGS) $(CPPFLAGS) -c $< -o $@
 
 # Compilation rules for *.c files.
 obj-$(ARCH)/%.c.o: src/%.c GNUmakefile

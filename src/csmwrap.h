@@ -39,7 +39,8 @@ struct csmwrap_priv {
 
 extern int unlock_bios_region();
 extern int build_coreboot_table(struct csmwrap_priv *priv);
-extern int copy_rsdt(struct csmwrap_priv *priv);
+EFI_STATUS acpi_init(struct csmwrap_priv *priv);
+EFI_STATUS acpi_prepare_exitbs(struct csmwrap_priv *priv);
 int build_e820_map(struct csmwrap_priv *priv);
 int apply_intel_platform_workarounds(void);
 
