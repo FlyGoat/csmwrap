@@ -13,3 +13,6 @@
 [submodule "seabios"]
 	path = seabios
 	url = https://github.com/FlyGoat/seabios-csmwrap.git
+[submodule "uACPI"]
+	path = uACPI
+	url = https://github.com/uACPI/uACPI.git

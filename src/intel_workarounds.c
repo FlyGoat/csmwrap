@@ -50,33 +50,35 @@
 #define PM_READ_VALUE       (1<<4)
 #define PM_READ_STATUS      (2<<4)
 
-#define PCH_P2SB_E0		0xe0
-#define HIDE_BIT		(1 << 0)
+#define R_P2SB_CFG_P2SBC                      0x000000e0U      ///< P2SB Control
+                                                               /* P2SB general configuration register
+                                                                */
+#define B_P2SB_CFG_P2SBC_HIDE                 (1 << 8)         ///< P2SB Hide Bit
 
 static int pit_8254cge_workaround(void)
 {
-    uint8_t reg8;
     uint32_t reg;
     unsigned long base;
     bool p2sb_hide = false;
+    int pch_pci_bus = 0;
 
-    reg = pciConfigReadDWord(0, PCI_DEVICE_NUMBER_PCH_P2SB,
+    reg = pciConfigReadDWord(pch_pci_bus, PCI_DEVICE_NUMBER_PCH_P2SB,
                              PCI_FUNCTION_NUMBER_PCH_P2SB,
                              0x0);
 
     /* P2SB maybe hidden, try unhide it first */
     if ((reg & 0xFFFF) == 0xffff) {
-        reg8 = pciConfigReadByte(0, PCI_DEVICE_NUMBER_PCH_P2SB,
+        reg = pciConfigReadDWord(pch_pci_bus, PCI_DEVICE_NUMBER_PCH_P2SB,
                                  PCI_FUNCTION_NUMBER_PCH_P2SB,
-                                 PCH_P2SB_E0 + 1);
-        reg8 &= ~HIDE_BIT;
-        pciConfigWriteByte(0, PCI_DEVICE_NUMBER_PCH_P2SB,
+                                 R_P2SB_CFG_P2SBC);
+        reg &= ~B_P2SB_CFG_P2SBC_HIDE;
+        pciConfigWriteDWord(pch_pci_bus, PCI_DEVICE_NUMBER_PCH_P2SB,
                             PCI_FUNCTION_NUMBER_PCH_P2SB,
-                            PCH_P2SB_E0 + 1, reg8);
+                            R_P2SB_CFG_P2SBC, reg);
         p2sb_hide = true;
     }
 
-    reg = pciConfigReadDWord(0, PCI_DEVICE_NUMBER_PCH_P2SB,
+    reg = pciConfigReadDWord(pch_pci_bus, PCI_DEVICE_NUMBER_PCH_P2SB,
                               PCI_FUNCTION_NUMBER_PCH_P2SB,
                               0x0);
 
@@ -85,12 +87,12 @@ static int pit_8254cge_workaround(void)
         goto test_pit;
     }
 
-    reg = pciConfigReadDWord(0, PCI_DEVICE_NUMBER_PCH_P2SB,
+    reg = pciConfigReadDWord(pch_pci_bus, PCI_DEVICE_NUMBER_PCH_P2SB,
                               PCI_FUNCTION_NUMBER_PCH_P2SB,
                               SBREG_BAR);
     base = reg & ~0x0F;
 
-    reg = pciConfigReadDWord(0, PCI_DEVICE_NUMBER_PCH_P2SB,
+    reg = pciConfigReadDWord(pch_pci_bus, PCI_DEVICE_NUMBER_PCH_P2SB,
                               PCI_FUNCTION_NUMBER_PCH_P2SB,
                               SBREG_BARH);
 #ifdef __LP64__
@@ -111,13 +113,13 @@ static int pit_8254cge_workaround(void)
 
     /* Hide P2SB again */
     if (p2sb_hide) {
-        reg8 = pciConfigReadByte(0, PCI_DEVICE_NUMBER_PCH_P2SB,
+        reg = pciConfigReadDWord(pch_pci_bus, PCI_DEVICE_NUMBER_PCH_P2SB,
                                  PCI_FUNCTION_NUMBER_PCH_P2SB,
-                                 PCH_P2SB_E0 + 1);
-        reg8 |= HIDE_BIT;
-        pciConfigWriteByte(0, PCI_DEVICE_NUMBER_PCH_P2SB,
+                                 R_P2SB_CFG_P2SBC);
+        reg |= B_P2SB_CFG_P2SBC_HIDE;
+        pciConfigWriteDWord(pch_pci_bus, PCI_DEVICE_NUMBER_PCH_P2SB,
                             PCI_FUNCTION_NUMBER_PCH_P2SB,
-                            PCH_P2SB_E0 + 1, reg8);
+                            R_P2SB_CFG_P2SBC, reg);
     }
 
 test_pit:
