@@ -134,12 +134,11 @@ override LDFLAGS += \
     -z max-page-size=0x1000 \
     -Wl,--gc-sections \
     -Wl,-z,execstack \
-    -T nyu-efi/src/elf_$(ARCH)_efi.lds
+    -T nyu-efi/$(ARCH)/link_script.lds
 
 # Use "find" to glob all *.c, *.S, and *.asm{32,64} files in the tree and obtain the
 # object and header dependency file names.
-override SRCFILES := $(shell cd src && find -L * -type f | LC_ALL=C sort)
-override SRCFILES += $(shell find -L uACPI/source -type f | LC_ALL=C sort)
+override SRCFILES := $(shell find -L src nyu-efi/$(ARCH) uACPI/source uACPI/include -type f | LC_ALL=C sort)
 override CFILES := $(filter %.c,$(SRCFILES))
 override ASFILES := $(filter %.S,$(SRCFILES))
 ifeq ($(ARCH),ia32)
@@ -164,21 +163,8 @@ all: bin-$(ARCH)/$(OUTPUT).efi
 # Include header dependencies.
 -include $(HEADER_DEPS)
 
-obj-$(ARCH)/printf.c.o: override CPPFLAGS += \
+obj-$(ARCH)/src/printf.c.o: override CPPFLAGS += \
     -I nanoprintf
-
-# Rules to build the nyu-efi objects we need.
-nyu-efi/src/crt0-efi-$(ARCH).S.o: nyu-efi
-
-nyu-efi/src/reloc_$(ARCH).c.o: nyu-efi
-
-.PHONY: nyu-efi
-nyu-efi:
-	$(MAKE) -C nyu-efi/src -f nyu-efi.mk \
-		ARCH="$(ARCH)" \
-		CC="$(CC)" \
-		CFLAGS="$(USER_CFLAGS) -nostdinc" \
-		CPPFLAGS="$(USER_CPPFLAGS) -isystem ../../freestnd-c-hdrs"
 
 # Rule to convert the final ELF executable to a .EFI PE executable.
 bin-$(ARCH)/$(OUTPUT).efi: bin-$(ARCH)/$(OUTPUT) GNUmakefile
@@ -187,34 +173,30 @@ bin-$(ARCH)/$(OUTPUT).efi: bin-$(ARCH)/$(OUTPUT) GNUmakefile
 	dd if=/dev/zero of=$@ bs=4096 count=0 seek=$$(( ($$(wc -c < $@) + 4095) / 4096 )) 2>/dev/null
 
 # Link rules for the final executable.
-bin-$(ARCH)/$(OUTPUT): GNUmakefile nyu-efi/src/elf_$(ARCH)_efi.lds nyu-efi/src/crt0-efi-$(ARCH).S.o nyu-efi/src/reloc_$(ARCH).c.o $(OBJ)
+bin-$(ARCH)/$(OUTPUT): GNUmakefile nyu-efi/$(ARCH)/link_script.lds $(OBJ)
 	mkdir -p "$$(dirname $@)"
-	$(CC) $(CFLAGS) $(LDFLAGS) nyu-efi/src/crt0-efi-$(ARCH).S.o nyu-efi/src/reloc_$(ARCH).c.o $(OBJ) -o $@
-
-obj-$(ARCH)/uACPI/source/%.c.o: uACPI/source/%.c GNUmakefile
-	mkdir -p "$$(dirname $@)"
-	$(CC) $(CFLAGS) $(CPPFLAGS) -c $< -o $@
+	$(CC) $(CFLAGS) $(LDFLAGS) $(OBJ) -o $@
 
 # Compilation rules for *.c files.
-obj-$(ARCH)/%.c.o: src/%.c GNUmakefile
+obj-$(ARCH)/%.c.o: %.c GNUmakefile
 	mkdir -p "$$(dirname $@)"
 	$(CC) $(CFLAGS) $(CPPFLAGS) -c $< -o $@
 
 # Compilation rules for *.S files.
-obj-$(ARCH)/%.S.o: src/%.S GNUmakefile
+obj-$(ARCH)/%.S.o: %.S GNUmakefile
 	mkdir -p "$$(dirname $@)"
 	$(CC) $(CFLAGS) $(CPPFLAGS) -c $< -o $@
 
 ifeq ($(ARCH),ia32)
 # Compilation rules for *.asm32 (nasm) files.
-obj-$(ARCH)/%.asm32.o: src/%.asm32 GNUmakefile
+obj-$(ARCH)/%.asm32.o: %.asm32 GNUmakefile
 	mkdir -p "$$(dirname $@)"
 	nasm $(NASMFLAGS) $< -o $@
 endif
 
 ifeq ($(ARCH),x86_64)
 # Compilation rules for *.asm64 (nasm) files.
-obj-$(ARCH)/%.asm64.o: src/%.asm64 GNUmakefile
+obj-$(ARCH)/%.asm64.o: %.asm64 GNUmakefile
 	mkdir -p "$$(dirname $@)"
 	nasm $(NASMFLAGS) $< -o $@
 endif
@@ -223,18 +205,10 @@ endif
 ovmf/ovmf-code-$(ARCH).fd:
 	mkdir -p ovmf
 	curl -Lo $@ https://github.com/osdev0/edk2-ovmf-nightly/releases/latest/download/ovmf-code-$(ARCH).fd
-	case "$(ARCH)" in \
-		aarch64) dd if=/dev/zero of=$@ bs=1 count=0 seek=67108864 2>/dev/null;; \
-		riscv64) dd if=/dev/zero of=$@ bs=1 count=0 seek=33554432 2>/dev/null;; \
-	esac
 
 ovmf/ovmf-vars-$(ARCH).fd:
 	mkdir -p ovmf
 	curl -Lo $@ https://github.com/osdev0/edk2-ovmf-nightly/releases/latest/download/ovmf-vars-$(ARCH).fd
-	case "$(ARCH)" in \
-		aarch64) dd if=/dev/zero of=$@ bs=1 count=0 seek=67108864 2>/dev/null;; \
-		riscv64) dd if=/dev/zero of=$@ bs=1 count=0 seek=33554432 2>/dev/null;; \
-	esac
 
 # Rules for running our executable in QEMU.
 .PHONY: run
@@ -263,7 +237,6 @@ endif
 # Remove object files and the final executable.
 .PHONY: clean
 clean:
-	$(MAKE) -C nyu-efi/src -f nyu-efi.mk ARCH="$(ARCH)" clean
 	rm -rf bin-$(ARCH) obj-$(ARCH)
 
 # Remove everything built and generated including downloaded dependencies.
