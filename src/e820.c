@@ -162,7 +162,6 @@ static uint32_t convert_memory_type(EFI_MEMORY_TYPE type)
             return EfiAcpiAddressRangeUnusable;
         case EfiLoaderCode:
         case EfiLoaderData:
-            return EfiAcpiAddressRangeMemory;
          /* FIXME: Report BootService memory will cause 0xA5 BSOD, why????  */
         case EfiBootServicesCode:
         case EfiBootServicesData:
