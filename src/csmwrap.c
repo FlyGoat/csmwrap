@@ -120,7 +120,10 @@ EFI_STATUS efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
     gBS->RaiseTPL(TPL_NOTIFY);
     gBS->SetWatchdogTimer(0, 0, 0, NULL);
 
-    if (unlock_bios_region()) {
+    acpi_init(&priv);
+    pci_init(&priv);
+
+    if (unlock_bios_region(&priv)) {
         printf("Unable to unlock BIOS region\n");
         return -1;
     }
@@ -131,7 +134,7 @@ EFI_STATUS efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
         return -1;
     }
 
-    apply_intel_platform_workarounds();
+    apply_intel_platform_workarounds(&priv);
 
     csm_bin_base = (uintptr_t)BIOSROM_END - sizeof(Csm16_bin);
     priv.csm_bin_base = csm_bin_base;
@@ -146,8 +149,6 @@ EFI_STATUS efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
         printf("EFI_COMPATIBILITY16_TABLE not found\n");
         return -1;
     }
-
-    acpi_init(&priv);
 
     Status = csmwrap_video_init(&priv);
 
@@ -190,6 +191,7 @@ EFI_STATUS efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
     printf("CALL16 %x:%x\n", priv.csm_efi_table->Compatibility16CallSegment,
             priv.csm_efi_table->Compatibility16CallOffset);
 
+    acpi_prepare_exitbs(&priv);
     /* WARNING: No EFI Video afterwards */
     csmwrap_video_prepare_exitbs(&priv);
 

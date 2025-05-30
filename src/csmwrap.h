@@ -27,6 +27,10 @@ struct csmwrap_priv {
     uintptr_t csm_bin_base;
     struct low_stub *low_stub;
 
+    PCI_DEVICE_INDEPENDENT_REGION hbridge_hdr;
+    int rootbus_count;
+    uint8_t rootbus_list[PCI_MAX_BUS + 1];
+
     /* VGA stuff */
     enum csmwrap_video_type video_type;
     EFI_GRAPHICS_OUTPUT_PROTOCOL *gop;
@@ -37,12 +41,19 @@ struct csmwrap_priv {
     struct cb_framebuffer cb_fb;
 };
 
-extern int unlock_bios_region();
-extern int build_coreboot_table(struct csmwrap_priv *priv);
+EFI_STATUS unlock_bios_region(struct csmwrap_priv *priv);
+int build_coreboot_table(struct csmwrap_priv *priv);
 EFI_STATUS acpi_init(struct csmwrap_priv *priv);
 EFI_STATUS acpi_prepare_exitbs(struct csmwrap_priv *priv);
+
+EFI_STATUS pci_init(struct csmwrap_priv *priv);
+EFI_STATUS PciConfigRead(EFI_PCI_ROOT_BRIDGE_IO_PROTOCOL_WIDTH Width, UINT64 Address,
+                         UINTN Count, VOID *Buffer);
+EFI_STATUS PciConfigWrite(EFI_PCI_ROOT_BRIDGE_IO_PROTOCOL_WIDTH Width, UINT64 Address,
+                          UINTN Count, VOID *Buffer);
+
 int build_e820_map(struct csmwrap_priv *priv);
-int apply_intel_platform_workarounds(void);
+EFI_STATUS apply_intel_platform_workarounds(struct csmwrap_priv *priv);
 
 
 static inline int
