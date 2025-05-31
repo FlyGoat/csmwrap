@@ -237,10 +237,10 @@ BITS    32
     sidt    [esp + 36]        ; save IDT stack in argument space
     mov     eax, cr0
     mov     [edx - 4], eax                  ; save CR0 in _BackFromUserCode.SavedCr0End - 4
-    and     eax, 7ffffffeh              ; clear PE, PG bits
+    mov     eax, 00000010h              ; clear all bits except ET
     mov     ebp, cr4
     mov     [edx + (_BackFromUserCode.SavedCr4End - 4 - _BackFromUserCode.SavedCr0End)], ebp
-    and     ebp, ~30h                ; clear PAE, PSE bits
+    xor     ebp, ebp                    ; zero out CR4
     push    10h
     pop     ecx                         ; ecx <- selector for data segments
     lgdt    [edx + (_16Gdtr - _BackFromUserCode.SavedCr0End)]
