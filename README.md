@@ -86,9 +86,9 @@ Please read the [Contributing](https://github.com/FlyGoat/CSMWrap/wiki/Contribut
 
 ## Credits & Acknowledgements
 
-*   The **[SeaBIOS project](https://www.seabios.org/)** for their invaluable CSM and VBIOS code.
+*   The **[SeaBIOS project](https://www.seabios.org/)** for their CSM and VBIOS code.
 *   **[Nyu-EFI](https://codeberg.org/osdev/nyu-efi)** for the EFI C runtime, build system, and headers.
-*   **[EDK2 (TianoCore)](https://github.com/tianocore/edk2)** for UEFI specifications and some code inspiration.
+*   **[EDK2 (TianoCore)](https://github.com/tianocore/edk2)** for UEFI specifications and some code snippets.
 *   **[uACPI](https://github.com/uACPI/uACPI)** for ACPI table handling.
 *   **@CanonKong** for test feedback and general knowledge.
 *   All contributors and testers from the community!
