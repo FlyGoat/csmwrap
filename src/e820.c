@@ -4,7 +4,6 @@
 #include "csmwrap.h"
 
 /* This is not in E820.h */
-#define EfiAcpiAddressRangeUnusable 5
 #define EfiAcpiAddressRangeHole     (-1UL)
 
 static const char *
@@ -15,7 +14,6 @@ e820_type_name(uint32_t type)
     case EfiAcpiAddressRangeReserved:    return "RESERVED";
     case EfiAcpiAddressRangeACPI:        return "ACPI";
     case EfiAcpiAddressRangeNVS:         return "NVS";
-    case EfiAcpiAddressRangeUnusable:    return "UNUSABLE";
     default:                             return "UNKNOWN";
     }
 }
@@ -153,19 +151,16 @@ static uint32_t convert_memory_type(EFI_MEMORY_TYPE type)
 {
     switch (type) {
         case EfiConventionalMemory:
+        case EfiLoaderCode:
+        case EfiLoaderData:
+        case EfiBootServicesCode:
+        case EfiBootServicesData:
             return EfiAcpiAddressRangeMemory;
         case EfiACPIReclaimMemory:
             return EfiAcpiAddressRangeACPI;
         case EfiACPIMemoryNVS:
             return EfiAcpiAddressRangeNVS;
         case EfiUnusableMemory:
-            return EfiAcpiAddressRangeUnusable;
-        case EfiLoaderCode:
-        case EfiLoaderData:
-            return EfiAcpiAddressRangeMemory;
-         /* FIXME: Report BootService memory will cause 0xA5 BSOD, why????  */
-        case EfiBootServicesCode:
-        case EfiBootServicesData:
         case EfiReservedMemoryType:
         case EfiRuntimeServicesCode:
         case EfiRuntimeServicesData:
