@@ -1,12 +1,12 @@
 # CSMWrap [![Build Status](https://github.com/FlyGoat/CSMWrap/actions/workflows/build.yml/badge.svg)](https://github.com/FlyGoat/CSMWrap/actions/workflows/build.yml)
 
-CSMWrap is a cool UEFI application designed to enable legacy BIOS booting on modern UEFI-only systems. It achieves this by leveraging the Compatibility Support Module (CSM) and VESA VBIOS components from the [SeaBIOS project](https://www.seabios.org/), effectively emulating a traditional PC BIOS environment.
+CSMWrap is a cool UEFI application designed to enable legacy BIOS booting on modern UEFI-only systems. It achieves this by leveraging the Compatibility Support Module (CSM) and VESA VBIOS components from the [SeaBIOS project](https://www.seabios.org/), effectively creating a compatibility layer for traditional PC BIOS operation.
 
 This project aims to bridge the gap for users and developers who need to run operating systems or software that strictly require a legacy BIOS, on hardware that no longer provides one natively.
 
 ## Features
 
-*   **Legacy BIOS Emulation:** Provides INT 10h (video), INT 13h (disk), and other essential BIOS interrupts.
+*   **Legacy BIOS Environment:** Provides INT 10h (video), INT 13h (disk), and other essential BIOS interrupts.
 *   **SeaBIOS CSM Integration:** Utilizes a specially compiled SeaBIOS CSM (`Csm16.bin`) for core compatibility logic.
 *   **SeaVGABIOS for Video:** Includes SeaVGABIOS for VESA VBE support, initialized using information from EFI GOP.
 *   **E820 Memory Mapping:** Constructs an E820 memory map compatible with legacy OSes, derived from the UEFI memory map.
