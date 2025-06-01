@@ -181,41 +181,10 @@ static uint32_t convert_memory_type(EFI_MEMORY_TYPE type)
  * Build E820 memory map based on UEFI GetMemoryMap
  * Return the number of entries in the E820 map
  */
-int build_e820_map(struct csmwrap_priv *priv)
+int build_e820_map(struct csmwrap_priv *priv, EFI_MEMORY_DESCRIPTOR *memory_map, UINTN memory_map_size, UINTN descriptor_size)
 {
-    EFI_MEMORY_DESCRIPTOR *memory_map = NULL;
     EFI_MEMORY_DESCRIPTOR *memory_map_end;
     EFI_MEMORY_DESCRIPTOR *memory_map_ptr;
-    UINTN memory_map_size = 0;
-    UINTN map_key = 0;
-    UINTN descriptor_size = 0;
-    uint32_t descriptor_version = 0;
-    EFI_STATUS status;
-
-    /* First call to get the buffer size */
-    status = gBS->GetMemoryMap(&memory_map_size, NULL, &map_key, &descriptor_size, &descriptor_version);
-    if (status != EFI_BUFFER_TOO_SMALL) {
-        printf("Unexpected GetMemoryMap status: %lx\n", status);
-        return -1;
-    }
-    
-    /* Add some extra space to handle potential changes between calls */
-    memory_map_size += descriptor_size * 10;
-    
-    /* Allocate memory for the UEFI memory map */
-    status = gBS->AllocatePool(EfiLoaderData, memory_map_size, (void **)&memory_map);
-    if (EFI_ERROR(status)) {
-        printf("Failed to allocate memory for memory map: %lx\n", status);
-        return -1;
-    }
-    
-    /* Get the actual memory map */
-    status = gBS->GetMemoryMap(&memory_map_size, memory_map, &map_key, &descriptor_size, &descriptor_version);
-    if (EFI_ERROR(status)) {
-        printf("Failed to get memory map: %lx\n", status);
-        gBS->FreePool(memory_map);
-        return -1;
-    }
 
     memory_map_end = (EFI_MEMORY_DESCRIPTOR *)((uint8_t *)memory_map + memory_map_size);
 
@@ -238,9 +207,6 @@ int build_e820_map(struct csmwrap_priv *priv)
 
         e820_add(priv, start, end - start, type);
     }
-
-    /* Free the UEFI memory map */
-    gBS->FreePool(memory_map);
 
     /* Remove whole 1MB, we are going to fix it later */
     e820_remove(priv, 0, 0x100000);

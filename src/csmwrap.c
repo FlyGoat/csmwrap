@@ -160,11 +160,6 @@ EFI_STATUS efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
     priv.low_stub = (struct low_stub *)LOW_STUB_BASE;
     memset((void*)LOW_STUB_BASE, 0, CONVEN_END - LOW_STUB_BASE);
 
-    build_e820_map(&priv);
-    uintptr_t e820_low = (uintptr_t)&priv.low_stub->e820_map;
-    priv.csm_efi_table->E820Pointer = e820_low;
-    priv.csm_efi_table->E820Length = sizeof(EFI_E820_ENTRY64) * priv.low_stub->e820_entries;
-
     set_smbios_table();
     priv.low_stub->boot_table.AcpiTable = priv.csm_efi_table->AcpiRsdPtrPointer;
 
@@ -201,8 +196,16 @@ EFI_STATUS efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
     efi_mmap_size = sizeof(tmp_mmap);
     gBS->GetMemoryMap(&efi_mmap_size, tmp_mmap, &efi_mmap_key, &efi_desc_size, &efi_desc_ver);
     efi_mmap_size += 4096;
-    gBS->AllocatePool(EfiLoaderData, efi_mmap_size, (void **)&efi_mmap);
-    gBS->GetMemoryMap(&efi_mmap_size, efi_mmap, &efi_mmap_key, &efi_desc_size, &efi_desc_ver);
+    Status = gBS->AllocatePool(EfiLoaderData, efi_mmap_size, (void **)&efi_mmap);
+    if (Status != EFI_SUCCESS) {
+        printf("AllocatePool() for EFI memory map failed!");
+        return -1;
+    }
+    Status = gBS->GetMemoryMap(&efi_mmap_size, efi_mmap, &efi_mmap_key, &efi_desc_size, &efi_desc_ver);
+    if (Status != EFI_SUCCESS) {
+        printf("GetMemoryMap() failed!");
+        return -1;
+    }
 
     // It may take N amounts of ExitBootServices() calls to complete...
     // Cap at 128.
@@ -214,11 +217,16 @@ EFI_STATUS efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
     }
     if (Status != EFI_SUCCESS) {
         printf("Failed to exit boot services!");
-        return Status;
+        return -1;
     }
 
     /* Disable external interrupts */
     asm volatile ("cli");
+
+    build_e820_map(&priv, efi_mmap, efi_mmap_size, efi_desc_size);
+    uintptr_t e820_low = (uintptr_t)&priv.low_stub->e820_map;
+    priv.csm_efi_table->E820Pointer = e820_low;
+    priv.csm_efi_table->E820Length = sizeof(EFI_E820_ENTRY64) * priv.low_stub->e820_entries;
 
     /* Disable 8259 PIC */
     outb(0x21, 0xff);
