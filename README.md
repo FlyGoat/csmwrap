@@ -1,50 +1,48 @@
-# CSMWrap
+# CSMWrap [![Build Status](https://github.com/FlyGoat/CSMWrap/actions/workflows/build.yml/badge.svg)](https://github.com/FlyGoat/CSMWrap/actions/workflows/build.yml)
 
-CSMWrap is a cool little hack that brings back the good old PC BIOS on those fancy-pants UEFI-only systems. It utilises the CSM (Compatibility Support Module) and VESA VBIOS from [SeaBIOS project](https://www.seabios.org/) to emulate a legacy BIOS environment.
+CSMWrap is a cool UEFI application designed to enable legacy BIOS booting on modern UEFI-only systems. It achieves this by leveraging the Compatibility Support Module (CSM) and VESA VBIOS components from the [SeaBIOS project](https://www.seabios.org/), effectively creating a compatibility layer for traditional PC BIOS operation.
 
-## Current Status
+## Core Features
 
-Right now, CSMWrap can:
+*   **Native Legacy BIOS Environment:** Provides essential BIOS services (INT 10h, INT 13h, etc.).
+*   **SeaBIOS Integration:** Utilizes SeaBIOS CSM and VBIOS for compatibility.
+*   **UEFI Compatibility:** Builds for IA32 and x86_64 UEFI systems.
+*   **Resource Management:** Handles E820 memory mapping, ACPI/SMBIOS passthrough.
 
-- Boot FreeDOS, Windows XP, and Windows 7 in QEMU (both q35 and piix4 machines)
-- Run on some real hardware too! (Your mileage may vary)
+## Prerequisites
 
-## Implementation Details
+Before attempting to use CSMWrap, your system's UEFI firmware settings **MUST** be configured as follows:
 
-CSMWrap works by:
+1.  **Secure Boot MUST be DISABLED.**
+2.  **"Above 4G Decoding" / "Resizable BAR" / "Smart Access Memory" MUST be DISABLED.**
+    *   This is critical for legacy VBIOS compatibility and ensures PCI resources are mapped within the accessible 4GB address space.
+3.  **Native CSM (Compatibility Support Module):**
+    *   **Try disabling it first.** CSMWrap aims to be its own CSM. If issues arise, you can experiment with enabling it.
 
-- Unlocking the legacy BIOS memory region (0xC0000-0xFFFFF)
-- Loading the SeaBIOS CSM module into memory
-- Configuring memory mapping for legacy applications
-- Setting up VGA BIOS with information from EFI GOP
-- Building an E820 memory map based on EFI memory map
-- Providing essential compatibility tables (ACPI, SMBIOS)
-- Initializing the CSM module and legacy services
-- Transferring control to the legacy boot process
+Failure to correctly configure these settings is the most common reason for CSMWrap not working.
 
-## How to Use
+## Quick Start
 
-Simply use `csmwarp.efi` as your bootloader, you can place it in your EFI partition and boot from it. Remember to disable Secure Boot, and Above 4G Decoding in your BIOS/UEFI settings.
+1.  **Download:** Get the latest `csmwrap<ARCH>.efi` from the [Releases page](https://github.com/FlyGoat/CSMWrap/releases).
+2.  **Configure UEFI:** Ensure all **Crucial UEFI Prerequisites** above are met.
+3.  **Deploy:** Copy `csmwrap<ARCH>.efi` to your EFI System Partition (ESP), typically as `EFI/BOOT/BOOTX64.EFI` (for 64-bit) or `EFI/BOOT/BOOTIA32.EFI` (for 32-bit).
+4.  **Boot:** Select the UEFI boot entry for CSMWrap.
 
-## Limitations
-### Above 4G Decoding
+## Documentation
 
-It is almost required to run CSMWrap with above 4G decoding disabled in your BIOS/UEFI. As UEFI firmwares are likely to place GPU's VRAM BAR above 4G, and legacy BIOS are 32bit which means it can only access the first 4G of memory.
+For detailed installation, usage, advanced scenarios, and troubleshooting, please consult our Wiki.
+Please visit [this](https://github.com/FlyGoat/CSMWrap/wiki).
 
-### Legacy Region Unlocking
+## Contributing
 
-Currently csmwrap relies on `EFI_LEGACY_REGION2_PROTOCOL` to enable writing to the legacy region. This is not available on all systems. For system that do not support this protocol, csmwrap will attempt to use PAM registers in chipset to perform decoding, which is not guaranteed to work.
+Contributions are welcome! Whether it's reporting bugs, suggesting features, improving documentation, or submitting code changes, your help is appreciated.
+Please read the [Contributing](https://github.com/FlyGoat/CSMWrap/wiki/Contributing) guide for more details.
 
-### Windows Video Modesetting Issues
+## Credits & Acknowledgements
 
-Windows XP/7's video modesetting logic is a bit mysterious. It may try to set a incompatible mode using `int10h`, which will cause flickering or even black screen after transferring control to the legacy OS.
-
-This is a known issue and may be fixed in the future.
-
-Meanwhile you can try to inject the GPU driver to OS image to avoid using the VESA BIOS.
-
-## Credits
-- [SeaBIOS](https://www.seabios.org/) for the CSM module and VESA VBIOS
-- [Nyu-EFI](https://codeberg.org/osdev/nyu-efi) for EFI C runtime, build system, and headers
-- [EDK2](https://github.com/tianocore/edk2) for code snippets
-- @CanonKong for test feedback and general knowledge
+*   The **[SeaBIOS project](https://www.seabios.org/)** for their CSM and VBIOS code.
+*   **[Nyu-EFI](https://codeberg.org/osdev/nyu-efi)** for the EFI C runtime, build system, and headers.
+*   **[EDK2 (TianoCore)](https://github.com/tianocore/edk2)** for UEFI specifications and some code snippets.
+*   **[uACPI](https://github.com/uACPI/uACPI)** for ACPI table handling.
+*   **@CanonKong** for test feedback and general knowledge.
+*   All contributors and testers from the community!
