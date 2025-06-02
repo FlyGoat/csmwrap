@@ -12,6 +12,8 @@
 
 extern EFI_SYSTEM_TABLE *gST;
 extern EFI_BOOT_SERVICES *gBS;
+extern EFI_RUNTIME_SERVICES *gRT;
+extern EFI_TIME gTimeAtBoot;
 
 enum csmwrap_video_type {
     CSMWRAP_VIDEO_NONE,
@@ -40,7 +42,7 @@ struct csmwrap_priv {
 extern int unlock_bios_region();
 extern int build_coreboot_table(struct csmwrap_priv *priv);
 EFI_STATUS acpi_init(struct csmwrap_priv *priv);
-EFI_STATUS acpi_prepare_exitbs(struct csmwrap_priv *priv);
+void acpi_prepare_exitbs(void);
 int build_e820_map(struct csmwrap_priv *priv, EFI_MEMORY_DESCRIPTOR *memory_map, UINTN memory_map_size, UINTN descriptor_size);
 int apply_intel_platform_workarounds(void);
 
