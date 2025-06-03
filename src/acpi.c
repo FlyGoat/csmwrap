@@ -379,6 +379,8 @@ uacpi_status uacpi_kernel_get_rsdp(uacpi_phys_addr *rsdp)
     return UACPI_STATUS_OK;
 }
 
+static void *early_table_buffer;
+
 EFI_STATUS acpi_init(struct csmwrap_priv *priv)
 {
     UINTN i;
@@ -406,26 +408,20 @@ EFI_STATUS acpi_init(struct csmwrap_priv *priv)
     }
 
     if (g_rsdp) {
+        const size_t table_buffer_size = 4096;
+
+        EFI_STATUS status;
+        status = gBS->AllocatePool(EfiLoaderData, table_buffer_size, &early_table_buffer);
+        if (status != EFI_SUCCESS)
+            return status;
+
         enum uacpi_status uacpi_status;
-
-        uacpi_status = uacpi_initialize(UACPI_FLAG_NO_ACPI_MODE);
+        uacpi_status = uacpi_setup_early_table_access(early_table_buffer, table_buffer_size);
         if (uacpi_status != UACPI_STATUS_OK) {
-            printf("uACPI initialization failed: %s\n", uacpi_status_to_string(uacpi_status));
+            printf("uACPI early table setup failed: %s\n", uacpi_status_to_string(uacpi_status));
             return EFI_DEVICE_ERROR;
         }
 
-        uacpi_status = uacpi_namespace_load();
-        if (uacpi_status != UACPI_STATUS_OK) {
-            printf("uACPI namespace load failed: %s\n", uacpi_status_to_string(uacpi_status));
-            return EFI_DEVICE_ERROR;
-        }
-
-        uacpi_status = uacpi_namespace_initialize();
-        if (uacpi_status != UACPI_STATUS_OK) {
-            printf("uACPI namespace initialization failed: %s\n", uacpi_status_to_string(uacpi_status));
-            return EFI_DEVICE_ERROR;
-        }
-        
         return EFI_SUCCESS;
     }
 
@@ -433,7 +429,42 @@ EFI_STATUS acpi_init(struct csmwrap_priv *priv)
     return EFI_UNSUPPORTED;
 }
 
+EFI_STATUS acpi_full_init(void)
+{
+    enum uacpi_status uacpi_status;
+
+    uacpi_status = uacpi_initialize(UACPI_FLAG_NO_ACPI_MODE);
+    if (uacpi_status != UACPI_STATUS_OK) {
+        printf("uACPI initialization failed: %s\n", uacpi_status_to_string(uacpi_status));
+        return EFI_DEVICE_ERROR;
+    }
+
+    uacpi_status = uacpi_namespace_load();
+    if (uacpi_status != UACPI_STATUS_OK) {
+        printf("uACPI namespace load failed: %s\n", uacpi_status_to_string(uacpi_status));
+        return EFI_DEVICE_ERROR;
+    }
+
+    uacpi_status = uacpi_namespace_initialize();
+    if (uacpi_status != UACPI_STATUS_OK) {
+        printf("uACPI namespace initialization failed: %s\n", uacpi_status_to_string(uacpi_status));
+        return EFI_DEVICE_ERROR;
+    }
+
+    if (early_table_buffer != NULL) {
+        gBS->FreePool(early_table_buffer);
+        early_table_buffer = NULL;
+    }
+
+    return EFI_SUCCESS;
+}
+
 void acpi_prepare_exitbs(void)
 {
     uacpi_state_reset();
+
+    if (early_table_buffer != NULL) {
+        gBS->FreePool(early_table_buffer);
+        early_table_buffer = NULL;
+    }
 }
