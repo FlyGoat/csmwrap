@@ -139,7 +139,7 @@ override LDFLAGS += \
 
 # Use "find" to glob all *.c, *.S, and *.asm{32,64} files in the tree and obtain the
 # object and header dependency file names.
-override SRCFILES := $(shell find -L src nyu-efi/$(ARCH) uACPI/source uACPI/include -type f | LC_ALL=C sort)
+override SRCFILES := $(shell find -L src cc-runtime/src nyu-efi/$(ARCH) uACPI/source uACPI/include -type f | LC_ALL=C sort)
 override CFILES := $(filter %.c,$(SRCFILES))
 override ASFILES := $(filter %.S,$(SRCFILES))
 ifeq ($(ARCH),ia32)

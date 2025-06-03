@@ -1,8 +1,8 @@
 [submodule "freestnd-c-hdrs"]
 	path = freestnd-c-hdrs
 	url = https://codeberg.org/osdev/freestnd-c-hdrs-0bsd.git
-[submodule "src/cc-runtime"]
-	path = src/cc-runtime
+[submodule "cc-runtime"]
+	path = cc-runtime
 	url = https://codeberg.org/osdev/cc-runtime.git
 [submodule "nyu-efi"]
 	path = nyu-efi
