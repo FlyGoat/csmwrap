@@ -19,6 +19,8 @@ const char *banner = "CSMWrap Version " BUILD_VERSION "\n"
 
 EFI_SYSTEM_TABLE *gST;
 EFI_BOOT_SERVICES *gBS;
+EFI_RUNTIME_SERVICES *gRT;
+EFI_TIME gTimeAtBoot;
 
 struct csmwrap_priv priv = {
     .csm_bin = Csm16_bin,
@@ -114,6 +116,12 @@ EFI_STATUS efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
 
     gST = SystemTable;
     gBS = SystemTable->BootServices;
+    gRT = SystemTable->RuntimeServices;
+
+    if (gRT->GetTime(&gTimeAtBoot, NULL) != EFI_SUCCESS) {
+        printf("Failed to query current time\n");
+        return -1;
+    }
 
     printf("%s", banner);
 
@@ -187,6 +195,7 @@ EFI_STATUS efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
 
     /* WARNING: No EFI Video afterwards */
     csmwrap_video_prepare_exitbs(&priv);
+    acpi_prepare_exitbs();
 
     /* WARNING: No EFI runtime service afterwards */
     UINTN efi_mmap_size = 0, efi_desc_size = 0, efi_mmap_key = 0;

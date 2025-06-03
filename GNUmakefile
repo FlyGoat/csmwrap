@@ -99,8 +99,9 @@ ifeq ($(ARCH),ia32)
     endif
     override CFLAGS += \
         -m32 \
-        -march=i386 \
-        -mno-80387
+        -march=i686 \
+        -mno-80387 \
+        -mno-mmx
     override LDFLAGS += \
         -Wl,-m,elf_i386
     override NASMFLAGS += \
