@@ -283,7 +283,7 @@ static inline uint64_t rdmsr(uint32_t index) {
 }
 
 static inline void wrmsr(uint32_t index, uint64_t val) {
-    asm volatile ("wrmsr" :: "a"((uint32_t)val), "b"((uint32_t)(val >> 32)), "c"(index) : "memory");
+    asm volatile ("wrmsr" :: "a"((uint32_t)val), "d"((uint32_t)(val >> 32)), "c"(index) : "memory");
 }
 
 static inline uint64_t rdtsc(void) {
