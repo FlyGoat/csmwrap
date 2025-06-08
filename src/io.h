@@ -58,7 +58,7 @@ static inline uint8_t
 __inbc(int port)
 {
 	uint8_t data;
-	asm volatile("inb %w1,%0" : "=a" (data) : "id" (port));
+	asm volatile("inb %w1,%0" : "=a" (data) : "id" (port) : "memory");
 	return data;
 }
 
@@ -66,7 +66,7 @@ static inline uint8_t
 __inb(int port)
 {
 	uint8_t data;
-	asm volatile("inb %w1,%0" : "=a" (data) : "d" (port));
+	asm volatile("inb %w1,%0" : "=a" (data) : "d" (port) : "memory");
 	return data;
 }
 
@@ -84,7 +84,7 @@ static inline uint16_t
 __inwc(int port)
 {
 	uint16_t data;
-	asm volatile("inw %w1,%0" : "=a" (data) : "id" (port));
+	asm volatile("inw %w1,%0" : "=a" (data) : "id" (port) : "memory");
 	return data;
 }
 
@@ -92,7 +92,7 @@ static inline uint16_t
 __inw(int port)
 {
 	uint16_t data;
-	asm volatile("inw %w1,%0" : "=a" (data) : "d" (port));
+	asm volatile("inw %w1,%0" : "=a" (data) : "d" (port) : "memory");
 	return data;
 }
 
@@ -110,7 +110,7 @@ static inline uint32_t
 __inlc(int port)
 {
 	uint32_t data;
-	asm volatile("inl %w1,%0" : "=a" (data) : "id" (port));
+	asm volatile("inl %w1,%0" : "=a" (data) : "id" (port) : "memory");
 	return data;
 }
 
@@ -118,7 +118,7 @@ static inline uint32_t
 __inl(int port)
 {
 	uint32_t data;
-	asm volatile("inl %w1,%0" : "=a" (data) : "d" (port));
+	asm volatile("inl %w1,%0" : "=a" (data) : "d" (port) : "memory");
 	return data;
 }
 
@@ -135,20 +135,20 @@ insl(int port, void *addr, int cnt)
 static inline void
 __outbc(int port, uint8_t data)
 {
-	asm volatile("outb %0,%w1" : : "a" (data), "id" (port));
+	asm volatile("outb %0,%w1" : : "a" (data), "id" (port) : "memory");
 }
 
 static inline void
 __outb(int port, uint8_t data)
 {
-	asm volatile("outb %0,%w1" : : "a" (data), "d" (port));
+	asm volatile("outb %0,%w1" : : "a" (data), "d" (port) : "memory");
 }
 
 static inline void
 outsb(int port, const void *addr, int cnt)
 {
 	asm volatile("cld\n\trepne\n\toutsb"
-	    : "+S" (addr), "+c" (cnt) : "d" (port) : "cc");
+	    : "+S" (addr), "+c" (cnt) : "d" (port) : "cc", "memory");
 }
 
 #define	outw(port, data) \
@@ -157,20 +157,20 @@ outsb(int port, const void *addr, int cnt)
 static inline void
 __outwc(int port, uint16_t data)
 {
-	asm volatile("outw %0,%w1" : : "a" (data), "id" (port));
+	asm volatile("outw %0,%w1" : : "a" (data), "id" (port) : "memory");
 }
 
 static inline void
 __outw(int port, uint16_t data)
 {
-	asm volatile("outw %0,%w1" : : "a" (data), "d" (port));
+	asm volatile("outw %0,%w1" : : "a" (data), "d" (port) : "memory");
 }
 
 static inline void
 outsw(int port, const void *addr, int cnt)
 {
 	asm volatile("cld\n\trepne\n\toutsw"
-	    : "+S" (addr), "+c" (cnt) : "d" (port) : "cc");
+	    : "+S" (addr), "+c" (cnt) : "d" (port) : "cc", "memory");
 }
 
 #define	outl(port, data) \
@@ -179,20 +179,20 @@ outsw(int port, const void *addr, int cnt)
 static inline void
 __outlc(int port, uint32_t data)
 {
-	asm volatile("outl %0,%w1" : : "a" (data), "id" (port));
+	asm volatile("outl %0,%w1" : : "a" (data), "id" (port) : "memory");
 }
 
 static inline void
 __outl(int port, uint32_t data)
 {
-	asm volatile("outl %0,%w1" : : "a" (data), "d" (port));
+	asm volatile("outl %0,%w1" : : "a" (data), "d" (port) : "memory");
 }
 
 static inline void
 outsl(int port, const void *addr, int cnt)
 {
 	asm volatile("cld\n\trepne\n\toutsl"
-	    : "+S" (addr), "+c" (cnt) : "d" (port) : "cc");
+	    : "+S" (addr), "+c" (cnt) : "d" (port) : "cc", "memory");
 }
 
 #define PCI_CONFIG_ADDRESS 0xcf8
@@ -276,17 +276,26 @@ static inline void pciConfigWriteDWord(unsigned int bus, unsigned int slot,
     outl(PCI_CONFIG_DATA, data);
 }
 
-static inline uint64_t rdmsr(uint32_t index)
-{
-    uint64_t ret;
-    asm ("rdmsr" : "=A"(ret) : "c"(index));
-    return ret;
+static inline uint64_t rdmsr(uint32_t index) {
+    uint32_t edx, eax;
+    asm volatile ("rdmsr" : "=a"(eax), "=d"(edx) : "c"(index) : "memory");
+    return ((uint64_t)edx << 32) | eax;
 }
 
-static inline void wrmsr(uint32_t index, uint64_t val)
-{
-    asm volatile ("wrmsr" : : "c"(index), "A"(val));
+static inline void wrmsr(uint32_t index, uint64_t val) {
+    asm volatile ("wrmsr" :: "a"((uint32_t)val), "b"((uint32_t)(val >> 32)), "c"(index) : "memory");
 }
 
+static inline uint64_t rdtsc(void) {
+    uint32_t edx, eax;
+    asm volatile ("rdtsc" : "=a" (eax), "=d" (edx) :: "memory");
+    return ((uint64_t)edx << 32) | eax;
+}
+
+static inline void delay(uint64_t cycles) {
+    uint64_t next_stop = rdtsc() + cycles;
+
+    while (rdtsc() < next_stop);
+}
 
 #endif
