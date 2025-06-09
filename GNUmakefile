@@ -95,7 +95,7 @@ override NASMFLAGS += \
 ifeq ($(ARCH),ia32)
     ifeq ($(CC_IS_CLANG),1)
         override CC += \
-            -target i386-unknown-none
+            -target i686-unknown-none
     endif
     override CFLAGS += \
         -m32 \
