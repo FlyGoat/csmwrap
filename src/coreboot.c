@@ -45,12 +45,14 @@ int build_coreboot_table(struct csmwrap_priv *priv)
         tables = p;
 
         /* cb_framebuffer */
-        struct cb_framebuffer *framebuffer = (struct cb_framebuffer *)p;
-        memcpy(framebuffer, &priv->cb_fb, sizeof(struct cb_framebuffer));
-        framebuffer->tag = CB_TAG_FRAMEBUFFER;
-        framebuffer->size = sizeof(struct cb_framebuffer);
-        p += framebuffer->size;
-        table_entries++;
+        if (priv->video_type != CSMWRAP_VIDEO_OPROM) {
+            struct cb_framebuffer *framebuffer = (struct cb_framebuffer *)p;
+            memcpy(framebuffer, &priv->cb_fb, sizeof(struct cb_framebuffer));
+            framebuffer->tag = CB_TAG_FRAMEBUFFER;
+            framebuffer->size = sizeof(struct cb_framebuffer);
+            p += framebuffer->size;
+            table_entries++;
+        }
 
         /* Last header stuff */
         header->table_entries = table_entries;
