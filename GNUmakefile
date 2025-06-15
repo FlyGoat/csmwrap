@@ -70,11 +70,6 @@ override CFLAGS += \
     -ffunction-sections \
     -fdata-sections
 
-
-ifeq ($(CC_IS_CLANG),0)
-    override CFLAGS += --param=min-pagesize=0
-endif
-
 # Internal C preprocessor flags that should not be changed by the user.
 override CPPFLAGS := \
     -I src \
