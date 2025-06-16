@@ -47,41 +47,42 @@ static void *find_table(uint32_t signature, uint8_t *csm_bin_base, size_t size)
 
 int set_smbios_table()
 {
-    UINTN i;
     EFI_GUID smbiosGuid = SMBIOS_TABLE_GUID;
     EFI_GUID smbios3Guid = SMBIOS3_TABLE_GUID;
-    bool found = FALSE;
     uintptr_t table_addr = 0;
 
-    for (i = 0; i < gST->NumberOfTableEntries; i++) {
-        EFI_CONFIGURATION_TABLE *table;
-        table = gST->ConfigurationTable + i;
+    for (size_t i = 0; i < gST->NumberOfTableEntries; i++) {
+        EFI_CONFIGURATION_TABLE *table = gST->ConfigurationTable + i;
 
         if (!efi_guidcmp(table->VendorGuid, smbiosGuid)) {
             printf("Found SMBIOS Table at %x\n", (uintptr_t)table->VendorTable);
-            table_addr = (uintptr_t)table->VendorTable;
-            found = TRUE;
-            break;
-        }
-
-        if (!efi_guidcmp(table->VendorGuid, smbios3Guid)) {
-            printf("Found SMBIOS 3.0 Table at %x\n", (uintptr_t)table->VendorTable);
-            table_addr = (uintptr_t)table->VendorTable;
-            found = TRUE;
+            if (table_addr < 0x100000000) {
+                table_addr = (uintptr_t)table->VendorTable;
+            }
             break;
         }
     }
 
-    if (found) {
-        if (table_addr > 0xffffffff) {
-            printf("SMBIOS table address too high\n");
-            return -1;
+    if (table_addr == 0) {
+        for (size_t i = 0; i < gST->NumberOfTableEntries; i++) {
+            EFI_CONFIGURATION_TABLE *table = gST->ConfigurationTable + i;
+
+            if (!efi_guidcmp(table->VendorGuid, smbios3Guid)) {
+                printf("Found SMBIOS 3.0 Table at %x\n", (uintptr_t)table->VendorTable);
+                if (table_addr < 0x100000000) {
+                    table_addr = (uintptr_t)table->VendorTable;
+                }
+                break;
+            }
         }
+    }
+
+    if (table_addr != 0) {
         priv.low_stub->boot_table.SmbiosTable = table_addr;
         return 0;
     }
 
-    printf("No SMBIOS table found\n");
+    printf("No usable SMBIOS table found\n");
 
     return -1;
 }
