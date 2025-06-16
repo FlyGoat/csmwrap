@@ -260,17 +260,15 @@ EFI_STATUS efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
                         NULL,
                         0);
 
-    if (priv.video_type == CSMWRAP_VIDEO_OPROM) {
-        memset(&Regs, 0, sizeof(EFI_IA32_REGISTER_SET));
-        Regs.X.AX = Legacy16DispatchOprom;
-        Regs.X.ES = EFI_SEGMENT(&priv.low_stub->vga_oprom_table);
-        Regs.X.BX = EFI_OFFSET(&priv.low_stub->vga_oprom_table);
-        LegacyBiosFarCall86(priv.csm_efi_table->Compatibility16CallSegment,
-                            priv.csm_efi_table->Compatibility16CallOffset,
-                            &Regs,
-                            NULL,
-                            0);
-    }
+    memset(&Regs, 0, sizeof(EFI_IA32_REGISTER_SET));
+    Regs.X.AX = Legacy16DispatchOprom;
+    Regs.X.ES = EFI_SEGMENT(&priv.low_stub->vga_oprom_table);
+    Regs.X.BX = EFI_OFFSET(&priv.low_stub->vga_oprom_table);
+    LegacyBiosFarCall86(priv.csm_efi_table->Compatibility16CallSegment,
+                        priv.csm_efi_table->Compatibility16CallOffset,
+                        &Regs,
+                        NULL,
+                        0);
 
     memset(&Regs, 0, sizeof(EFI_IA32_REGISTER_SET));
     Regs.X.AX = Legacy16PrepareToBoot;
