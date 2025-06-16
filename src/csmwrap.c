@@ -147,7 +147,6 @@ EFI_STATUS efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
     priv.low_stub->boot_table.AcpiTable = priv.csm_efi_table->AcpiRsdPtrPointer;
 
     uintptr_t pmm_base = LegacyBiosInitializeThunkAndTable(LOW_STUB_BASE, sizeof(struct low_stub));
-    pmm_base += LOW_STACK_SIZE;
 
     printf("Init Thunk pmm: %lx\n", (uintptr_t)pmm_base);
 
