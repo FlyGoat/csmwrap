@@ -6,6 +6,10 @@
 
 #define barrier() __asm__ __volatile__("": : :"memory")
 
+static inline void clflush(void *addr) {
+    asm volatile ("clflush (%0)" :: "r"(addr) : "memory");
+}
+
 static inline void writel(void *addr, uint32_t val) {
     barrier();
     *(volatile uint32_t *)addr = val;

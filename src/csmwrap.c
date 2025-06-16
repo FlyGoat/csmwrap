@@ -45,27 +45,6 @@ static void *find_table(uint32_t signature, uint8_t *csm_bin_base, size_t size)
     return Table;
 }
 
-int test_bios_region_rw()
-{
-    uint32_t backup;
-    uint32_t *bios_region = (uint32_t *)BIOSROM_START;
-    uint32_t *bios_region_end = (uint32_t *)BIOSROM_END;
-    uint32_t *ptr = bios_region;
-
-    while (ptr < bios_region_end) {
-        backup = *ptr;
-        *ptr = 0xdeadbeef;
-        if (*ptr != 0xdeadbeef) {
-            printf("Unable to write to BIOS region\n");
-            return -1;
-        }
-        *ptr = backup;
-        ptr++;
-    }
-
-    return 0;
-}
-
 int set_smbios_table()
 {
     UINTN i;
@@ -133,11 +112,6 @@ EFI_STATUS efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
         return -1;
     }
     printf("Unlock!\n");
-
-    if (test_bios_region_rw()) {
-        printf("BIOS region bad\n");
-        return -1;
-    }
 
     apply_intel_platform_workarounds();
 
