@@ -5,6 +5,7 @@
  * with fallback to direct PCI configuration space access for specific chipsets.
  */
 
+#include <stdbool.h>
 #include <efi.h>
 #include "csmwrap.h"
 #include "edk2/LegacyRegion2.h"
@@ -298,6 +299,30 @@ EFI_STATUS print_legacy_region_info(EFI_LEGACY_REGION2_PROTOCOL *legacy_region)
     return EFI_SUCCESS;
 }
 
+static bool test_bios_region_rw(void) {
+    uint32_t *bios_region = (uint32_t *)BIOSROM_START;
+    uint32_t *bios_region_end = (uint32_t *)BIOSROM_END;
+    uint32_t *ptr = bios_region;
+
+    while (ptr < bios_region_end) {
+        clflush(ptr);
+        uint32_t val = readl(ptr);
+
+        writel(ptr, ~val);
+        clflush(ptr);
+
+        if (readl(ptr) != ~val) {
+            printf("Unable to write to BIOS region\n");
+            return false;
+        }
+
+        writel(ptr, val);
+        ptr++;
+    }
+
+    return true;
+}
+
 /**
  * Main function to unlock the BIOS region
  * Tries to use the UEFI protocol first, then falls back to chipset-specific methods
@@ -308,6 +333,11 @@ int unlock_bios_region(void)
 {
     EFI_LEGACY_REGION2_PROTOCOL *legacy_region = NULL;
     EFI_STATUS status;
+
+    // No need to do anything if the region is already unlocked and working.
+    if (test_bios_region_rw()) {
+        return 0;
+    }
 
     /* First, try to use the Legacy Region 2 Protocol */
     status = gBS->LocateProtocol(
@@ -322,7 +352,7 @@ int unlock_bios_region(void)
         
         /* Try to unlock using the protocol */
         status = unlock_legacy_region_protocol();
-        if (!EFI_ERROR(status)) {
+        if (!EFI_ERROR(status) && test_bios_region_rw()) {
             return 0;  /* Success */
         }
 
@@ -367,5 +397,5 @@ int unlock_bios_region(void)
             break;
     }
 
-    return status == 0 ? 0 : -1;
+    return (status == 0 && test_bios_region_rw()) ? 0 : -1;
 }
