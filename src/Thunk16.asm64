@@ -125,10 +125,8 @@ BITS    16
     mov     cr4, eax
 o32 lgdt [cs:bx + (SavedGdt - .Base)]
     mov     ecx, 0c0000080h
-    mov     eax, strict dword 0
-.SavedEFERLowEnd:
-    mov     edx, strict dword 0
-.SavedEFERHighEnd:
+    rdmsr
+    or      ah, 1
     wrmsr
     mov     eax, strict dword 0
 .SavedCr0End:
@@ -166,8 +164,8 @@ BITS    16
     mov     gs, dx
     mov     ecx, 0c0000080h
     mov     cr0, eax                    ; real mode starts at next instruction
-    xor     eax, eax
-    xor     edx, edx
+    rdmsr
+    and     ah, ~1
     wrmsr
     mov     cr4, ebp
     mov     ss, si                      ; set up 16-bit stack segment
@@ -285,22 +283,10 @@ BITS    64
     sidt    [rsp + 50h]       ; save IDT stack in argument space
     mov     rax, cr0
     mov     [rcx + (_BackFromUserCode.SavedCr0End - 4 - _BackFromUserCode.SavedCr4End)], eax
-    mov     eax, 00000010h              ; clear all bits except ET
-    push    rax
-    push    rcx
-    push    rdx
-    mov     ecx, 0c0000080h
-    rdmsr
-    mov     r12d, eax
-    mov     r13d, edx
-    pop     rdx
-    pop     rcx
-    pop     rax
-    mov     [rcx + (_BackFromUserCode.SavedEFERLowEnd - 4 - _BackFromUserCode.SavedCr4End)], r12d
-    mov     [rcx + (_BackFromUserCode.SavedEFERHighEnd - 4 - _BackFromUserCode.SavedCr4End)], r13d
+    and     eax, 7ffffffeh              ; clear PE, PG bits
     mov     rbp, cr4
     mov     [rcx - 4], ebp              ; save CR4 in _BackFromUserCode.SavedCr4End - 4
-    xor     ebp, ebp                    ; zero out CR4
+    and     ebp, ~30h                ; clear PAE, PSE bits
     mov     esi, r8d                    ; esi <- 16-bit stack segment
     push    DATA32
     pop     rdx                         ; rdx <- 32-bit data segment selector
