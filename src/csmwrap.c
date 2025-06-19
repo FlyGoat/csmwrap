@@ -161,7 +161,6 @@ EFI_STATUS efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
 
     /* WARNING: No EFI Video afterwards */
     csmwrap_video_prepare_exitbs(&priv);
-    acpi_prepare_exitbs();
 
     /* WARNING: No EFI runtime service afterwards */
     UINTN efi_mmap_size = 0, efi_desc_size = 0, efi_mmap_key = 0;
