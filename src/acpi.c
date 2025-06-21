@@ -99,7 +99,9 @@ bool acpi_init(struct csmwrap_priv *priv) {
     return false;
 }
 
-void acpi_prepare_exitbs(void) {
+void acpi_prepare_exitbs(struct csmwrap_priv *priv) {
+    (void)priv;
+
     if (early_table_buffer != NULL) {
         gBS->FreePool(early_table_buffer);
         early_table_buffer = NULL;

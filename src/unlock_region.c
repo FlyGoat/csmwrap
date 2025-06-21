@@ -7,9 +7,10 @@
 
 #include <stdbool.h>
 #include <efi.h>
-#include "csmwrap.h"
-#include "edk2/LegacyRegion2.h"
-#include "io.h"
+#include <csmwrap.h>
+#include <edk2/LegacyRegion2.h>
+#include <io.h>
+#include <pci.h>
 
 static EFI_GUID gEfiLegacyRegion2ProtocolGuid = EFI_LEGACY_REGION2_PROTOCOL_GUID;
 
@@ -21,7 +22,7 @@ static EFI_GUID gEfiLegacyRegion2ProtocolGuid = EFI_LEGACY_REGION2_PROTOCOL_GUID
 #define PAM_LOCK_BIT   0x01    /* Bit indicating PAM registers are locked */
 #define PAM_LOCK_REG   0x80    /* Register containing PAM lock bit on newer Intel chipsets */
 #define PAM_ENABLE     0x33    /* Value to enable read/write (0x30 for read, 0x03 for write) */
-
+#define PAM_COUNT      7       /* Number of PAM */
 
 /*
  * AMD MTRRs for Legacy Region
@@ -138,18 +139,23 @@ EFI_STATUS unlock_legacy_region_protocol(void)
  */
 int unlock_piix4_pam(void)
 {
+    EFI_STATUS status;
+    UINT64 pam_addr = EFI_PCI_ADDRESS(0, 0x0, 0x0) + 0x59; // PIIX4 PAM0 address
+    UINT8 pam_value[PAM_COUNT] = {
+        PAM_ENABLE, // 0x59 PAM0 (0xF0000-0xFFFFF)
+        PAM_ENABLE, // 0x5a PAM1 (0xC0000-0xC3FFF)
+        PAM_ENABLE, // 0x5b PAM2 (0xC4000-0xC7FFF)
+        PAM_ENABLE, // 0x5c PAM3 (0xC8000-0xCBFFF)
+        PAM_ENABLE, // 0x5d PAM4 (0xCC000-0xCFFFF)
+        PAM_ENABLE, // 0x5e PAM5 (0xD0000-0xD3FFF)
+        PAM_ENABLE  // 0x5f PAM6 (0xD4000-0xD7FFF)
+    };
+
     printf("Unlocking BIOS region with PIIX4 PAM\n");
 
-    /* Enable read+write for PAM0-PAM6 (0x59-0x96) */
-    pciConfigWriteByte(0, 0, 0, 0x59, PAM_ENABLE);  /* PAM0 (0xF0000-0xFFFFF) */
-    pciConfigWriteByte(0, 0, 0, 0x5a, PAM_ENABLE);  /* PAM1 (0xC0000-0xC3FFF) */
-    pciConfigWriteByte(0, 0, 0, 0x5b, PAM_ENABLE);  /* PAM2 (0xC4000-0xC7FFF) */
-    pciConfigWriteByte(0, 0, 0, 0x5c, PAM_ENABLE);  /* PAM3 (0xC8000-0xCBFFF) */
-    pciConfigWriteByte(0, 0, 0, 0x5d, PAM_ENABLE);  /* PAM4 (0xCC000-0xCFFFF) */
-    pciConfigWriteByte(0, 0, 0, 0x5e, PAM_ENABLE);  /* PAM5 (0xD0000-0xD3FFF) */
-    pciConfigWriteByte(0, 0, 0, 0x5f, PAM_ENABLE);  /* PAM6 (0xD4000-0xD7FFF) */
+    status = PciConfigWrite(EfiPciIoWidthUint8, pam_addr, PAM_COUNT, pam_value);
 
-    return 0;
+    return EFI_ERROR(status) ? -1 : 0;
 }
 
 /**
@@ -159,18 +165,23 @@ int unlock_piix4_pam(void)
  */
 int unlock_q35_pam(void)
 {
+    EFI_STATUS status;
+    UINT64 pam_addr = EFI_PCI_ADDRESS(0, 0x0, 0x0) + 0x90; // Q35 PAM0 address
+    UINT8 pam_value[PAM_COUNT] = {
+        PAM_ENABLE, // 0x90 PAM0 (0xF0000-0xFFFFF)
+        PAM_ENABLE, // 0x91 PAM1 (0xC0000-0xC3FFF)
+        PAM_ENABLE, // 0x92 PAM2 (0xC4000-0xC7FFF)
+        PAM_ENABLE, // 0x93 PAM3 (0xC8000-0xCBFFF)
+        PAM_ENABLE, // 0x94 PAM4 (0xCC000-0xCFFFF)
+        PAM_ENABLE, // 0x95 PAM5 (0xD0000-0xD3FFF)
+        PAM_ENABLE  // 0x96 PAM6 (0xD4000-0xD7FFF)
+    };
+
     printf("Unlocking BIOS region with Q35 PAM\n");
 
-    /* Enable read+write for PAM0-PAM6 (0x90-0x96) */
-    pciConfigWriteByte(0, 0, 0, 0x90, PAM_ENABLE);  /* PAM0 (0xF0000-0xFFFFF) */
-    pciConfigWriteByte(0, 0, 0, 0x91, PAM_ENABLE);  /* PAM1 (0xC0000-0xC3FFF) */
-    pciConfigWriteByte(0, 0, 0, 0x92, PAM_ENABLE);  /* PAM2 (0xC4000-0xC7FFF) */
-    pciConfigWriteByte(0, 0, 0, 0x93, PAM_ENABLE);  /* PAM3 (0xC8000-0xCBFFF) */
-    pciConfigWriteByte(0, 0, 0, 0x94, PAM_ENABLE);  /* PAM4 (0xCC000-0xCFFFF) */
-    pciConfigWriteByte(0, 0, 0, 0x95, PAM_ENABLE);  /* PAM5 (0xD0000-0xD3FFF) */
-    pciConfigWriteByte(0, 0, 0, 0x96, PAM_ENABLE);  /* PAM6 (0xD4000-0xD7FFF) */
+    status = PciConfigWrite(EfiPciIoWidthUint8, pam_addr, PAM_COUNT, pam_value);
 
-    return 0;
+    return EFI_ERROR(status) ? -1 : 0;
 }
 
 /**
@@ -180,24 +191,32 @@ int unlock_q35_pam(void)
  */
 int unlock_skylake_pam(void)
 {
+
+    EFI_STATUS status;
+    UINT64 pam_addr = EFI_PCI_ADDRESS(0, 0x0, 0x0) + 0x80; // SKYLAKE PAM
+    uint8_t reg;
+    UINT8 pam_value[PAM_COUNT] = {
+        0x30,       // 0x80 PAM0 (0xF0000-0xFFFFF) Special case, typically only enables read
+        PAM_ENABLE, // 0x5a PAM1 (0xC0000-0xC3FFF)
+        PAM_ENABLE, // 0x5b PAM2 (0xC4000-0xC7FFF)
+        PAM_ENABLE, // 0x5c PAM3 (0xC8000-0xCBFFF)
+        PAM_ENABLE, // 0x5d PAM4 (0xCC000-0xCFFFF)
+        PAM_ENABLE, // 0x5e PAM5 (0xD0000-0xD3FFF)
+        PAM_ENABLE  // 0x5f PAM6 (0xD4000-0xD7FFF)
+    };
+
     printf("Unlocking BIOS region with Intel Skylake+ Generic PAM\n");
 
     /* Check if PAM is locked */
-    if (pciConfigReadByte(0, 0, 0, PAM_LOCK_REG) & PAM_LOCK_BIT) {
+    status = PciConfigRead(EfiPciIoWidthUint8, EFI_PCI_ADDRESS(0, 0, 0), PAM_LOCK_REG, &reg);
+    if (reg & PAM_LOCK_BIT) {
         printf("PAM is locked on your platform\n");
         return -1;
     }
 
-    /* Enable read+write for PAM0-PAM6 (0x80-0x86) */
-    pciConfigWriteByte(0, 0, 0, 0x80, 0x30);        /* PAM0 special case (typically only enables read) */
-    pciConfigWriteByte(0, 0, 0, 0x81, PAM_ENABLE);  /* PAM1 */
-    pciConfigWriteByte(0, 0, 0, 0x82, PAM_ENABLE);  /* PAM2 */
-    pciConfigWriteByte(0, 0, 0, 0x83, PAM_ENABLE);  /* PAM3 */
-    pciConfigWriteByte(0, 0, 0, 0x84, PAM_ENABLE);  /* PAM4 */
-    pciConfigWriteByte(0, 0, 0, 0x85, PAM_ENABLE);  /* PAM5 */
-    pciConfigWriteByte(0, 0, 0, 0x86, PAM_ENABLE);  /* PAM6 */
+    status = PciConfigWrite(EfiPciIoWidthUint8, pam_addr, PAM_COUNT, pam_value);
 
-    return 0;
+    return EFI_ERROR(status) ? -1 : 0;
 }
 
 /**
@@ -329,7 +348,7 @@ static bool test_bios_region_rw(void) {
  *
  * @return 0 on success, non-zero on failure
  */
-int unlock_bios_region(void)
+int unlock_bios_region(struct csmwrap_priv *priv)
 {
     EFI_LEGACY_REGION2_PROTOCOL *legacy_region = NULL;
     EFI_STATUS status;
@@ -363,10 +382,8 @@ int unlock_bios_region(void)
     }
 
     /* Check for known chipsets and use appropriate method */
-    uint32_t host_bridge_id = pciConfigReadDWord(0, 0, 0, 0x0);
-    printf("Host Bridge ID: 0x%08x\n", host_bridge_id);
-    uint16_t vendor_id = (host_bridge_id & 0xFFFF);
-    uint16_t device_id = (host_bridge_id >> 16) & 0xFFFF;
+    uint16_t vendor_id = priv->hbridge_hdr.VendorId;
+    uint16_t device_id = priv->hbridge_hdr.DeviceId;
 
     switch (vendor_id) {
         case INTEL_VENDOR_ID:

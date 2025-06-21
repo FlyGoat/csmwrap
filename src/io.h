@@ -10,6 +10,10 @@ static inline void clflush(void *addr) {
     asm volatile ("clflush (%0)" :: "r"(addr) : "memory");
 }
 
+static inline void writeq(void *addr, uint64_t val) {
+    barrier();
+    *(volatile uint64_t *)addr = val;
+}
 static inline void writel(void *addr, uint32_t val) {
     barrier();
     *(volatile uint32_t *)addr = val;
@@ -197,87 +201,6 @@ outsl(int port, const void *addr, int cnt)
 {
 	asm volatile("cld\n\trepne\n\toutsl"
 	    : "+S" (addr), "+c" (cnt) : "d" (port) : "cc", "memory");
-}
-
-#define PCI_CONFIG_ADDRESS 0xcf8
-#define PCI_CONFIG_DATA 0xcfc
-
-static inline void pciSetAddress(unsigned int bus, unsigned int slot,
-                   unsigned int function, unsigned int offset)
-{
-    uint32_t address;
-
-    /* Address bits (inclusive):
-     * 31      Enable bit (must be 1 for it to work)
-     * 30 - 24 Reserved
-     * 23 - 16 Bus number
-     * 15 - 11 Slot number
-     * 10 - 8  Function number (for multifunction devices)
-     * 7 - 2   Register number (offset / 4)
-     * 1 - 0   Must always be 00 */
-    address = 0x80000000 | ((unsigned long) (bus & 0xff) << 16)
-              | ((unsigned long) (slot & 0x1f) << 11)
-              | ((unsigned long) (function & 0x7) << 8)
-              | ((unsigned long) offset & 0xff);
-    /* Full DWORD write to port must be used for PCI to detect new address. */
-    outl(PCI_CONFIG_ADDRESS, address);
-}
-
-static inline uint8_t pciConfigReadByte(unsigned int bus, unsigned int slot,
-                                unsigned int function, unsigned int offset)
-{
-    pciSetAddress(bus, slot, function, offset);
-    /* The PCI registers are little endian,
-     * so the last byte of DWORD is read
-     * when offset is 0. */
-    return (inb(PCI_CONFIG_DATA + (offset & 3)));
-}
-
-static inline uint16_t pciConfigReadWord(unsigned int bus, unsigned int slot,
-                               unsigned int function, unsigned int offset)
-{
-    pciSetAddress(bus, slot, function, offset);
-    /* The PCI registers are little endian,
-     * so the last word of DWORD is read
-     * when offset is 0. */
-    return (inw(PCI_CONFIG_DATA + (offset & 2)));
-}
-
-static inline uint32_t pciConfigReadDWord(unsigned int bus, unsigned int slot,
-                                 unsigned int function, unsigned int offset)
-{
-    pciSetAddress(bus, slot, function, offset);
-    return (inl(PCI_CONFIG_DATA));
-}
-
-static inline void pciConfigWriteByte(unsigned int bus, unsigned int slot,
-                        unsigned int function, unsigned int offset,
-                        uint8_t data)
-{
-    pciSetAddress(bus, slot, function, offset);
-    /* The PCI registers are little endian,
-     * so the last byte of DWORD is written
-     * when offset is 0. */
-    outb(PCI_CONFIG_DATA + (offset & 3), data);
-}
-
-static inline void pciConfigWriteWord(unsigned int bus, unsigned int slot,
-                        unsigned int function, unsigned int offset,
-                        uint16_t data)
-{
-    pciSetAddress(bus, slot, function, offset);
-    /* The PCI registers are little endian,
-     * so the last word of DWORD is written
-     * when offset is 0. */
-    outw(PCI_CONFIG_DATA + (offset & 2), data);
-}
-
-static inline void pciConfigWriteDWord(unsigned int bus, unsigned int slot,
-                         unsigned int function, unsigned int offset,
-                         uint32_t data)
-{
-    pciSetAddress(bus, slot, function, offset);
-    outl(PCI_CONFIG_DATA, data);
 }
 
 static inline uint64_t rdmsr(uint32_t index) {

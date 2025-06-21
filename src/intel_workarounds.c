@@ -1,10 +1,16 @@
 #include <efi.h>
-#include "csmwrap.h"
+#include <csmwrap.h>
+#include <io.h>
+#include <printf.h>
+#include <pci.h>
 
-#include "io.h"
 
-#define PCI_DEVICE_NUMBER_PCH_P2SB                 31
-#define PCI_FUNCTION_NUMBER_PCH_P2SB               1
+// See Silicon/ArrowlakePkg/Include/Register/PchBdfAssignment.h
+//
+// Primary to Sideband (P2SB) Bridge SOC (D31:F1)
+//
+#define PCI_DEVICE_NUMBER_PCH_P2SB                    31
+#define PCI_FUNCTION_NUMBER_PCH_P2SB                  1
 
 #define	SBREG_BAR		0x10
 #define SBREG_BARH      0x14
@@ -55,46 +61,73 @@
                                                                 */
 #define B_P2SB_CFG_P2SBC_HIDE                 (1 << 8)         ///< P2SB Hide Bit
 
-static int pit_8254cge_workaround(void)
+
+EFI_STATUS find_p2sb_pci(struct csmwrap_priv *priv, UINT64 *pci_address)
 {
+    PCI_TYPE00 pdev;
+
+    for (int pciroot = 0; pciroot < priv->rootbus_count; pciroot++) {
+        UINT8 bus = priv->rootbus_list[pciroot];
+        UINT64 d31f0 = EFI_PCI_ADDRESS(bus, 31, 0);
+
+        if (PciConfigRead(EfiPciIoWidthUint32, d31f0, sizeof(pdev.Hdr) / 4, &pdev.Hdr) != EFI_SUCCESS) {
+            continue; // Skip if configuration cannot be read
+        }
+
+        if (pdev.Hdr.VendorId != 0x8086 || !IS_PCI_MULTI_FUNC(&pdev)) {
+            continue; // Not an Intel multifunc device
+        }
+
+        if (!IS_CLASS2(&pdev, PCI_CLASS_BRIDGE, PCI_CLASS_BRIDGE_ISA)) {
+            continue; // D31F0 is not a ISA bridge
+        }
+
+        *pci_address = EFI_PCI_ADDRESS(bus, PCI_DEVICE_NUMBER_PCH_P2SB, PCI_FUNCTION_NUMBER_PCH_P2SB);
+
+        return EFI_SUCCESS; // Found P2SB
+    }
+
+    return EFI_NOT_FOUND; // No P2SB found
+}
+
+static int pit_8254cge_workaround(struct csmwrap_priv *priv)
+{
+    EFI_STATUS Status;
     uint32_t reg;
     unsigned long base;
     bool p2sb_hide = false;
-    int pch_pci_bus = 0;
+    UINT64 p2sb_addr;
 
-    reg = pciConfigReadDWord(pch_pci_bus, PCI_DEVICE_NUMBER_PCH_P2SB,
-                             PCI_FUNCTION_NUMBER_PCH_P2SB,
-                             0x0);
+    Status = find_p2sb_pci(priv, &p2sb_addr);
+    if (EFI_ERROR(Status)) {
+        DEBUG((DEBUG_INFO, "P2SB Not found %d, skipping 8254CGE workaround\n", Status));
+        return -1; // P2SB not found, skip workaround
+    }
+
+    DEBUG((DEBUG_INFO, "P2SB Address: %lx\n", p2sb_addr));
+
+    Status = PciConfigRead(EfiPciIoWidthUint32, p2sb_addr, 1, &reg);
 
     /* P2SB maybe hidden, try unhide it first */
     if ((reg & 0xFFFF) == 0xffff) {
-        reg = pciConfigReadDWord(pch_pci_bus, PCI_DEVICE_NUMBER_PCH_P2SB,
-                                 PCI_FUNCTION_NUMBER_PCH_P2SB,
-                                 R_P2SB_CFG_P2SBC);
+        Status = PciConfigRead(EfiPciIoWidthUint32, p2sb_addr + R_P2SB_CFG_P2SBC, 1, &reg);
         reg &= ~B_P2SB_CFG_P2SBC_HIDE;
-        pciConfigWriteDWord(pch_pci_bus, PCI_DEVICE_NUMBER_PCH_P2SB,
-                            PCI_FUNCTION_NUMBER_PCH_P2SB,
-                            R_P2SB_CFG_P2SBC, reg);
+        Status = PciConfigWrite(EfiPciIoWidthUint32, p2sb_addr + R_P2SB_CFG_P2SBC, 1, &reg);
         p2sb_hide = true;
     }
 
-    reg = pciConfigReadDWord(pch_pci_bus, PCI_DEVICE_NUMBER_PCH_P2SB,
-                              PCI_FUNCTION_NUMBER_PCH_P2SB,
-                              0x0);
+    /* Read header again */
+    Status = PciConfigRead(EfiPciIoWidthUint32, p2sb_addr, 1, &reg);
 
     if ((reg & 0xFFFF) != 0x8086) {
-        printf("No P2SB found, proceed to PIT test\n");
+        DEBUG((DEBUG_ERROR, "Unable to unhide P2SB\n"));
         goto test_pit;
     }
 
-    reg = pciConfigReadDWord(pch_pci_bus, PCI_DEVICE_NUMBER_PCH_P2SB,
-                              PCI_FUNCTION_NUMBER_PCH_P2SB,
-                              SBREG_BAR);
+    Status = PciConfigRead(EfiPciIoWidthUint32, p2sb_addr + SBREG_BAR, 1, &reg);
     base = reg & ~0x0F;
 
-    reg = pciConfigReadDWord(pch_pci_bus, PCI_DEVICE_NUMBER_PCH_P2SB,
-                              PCI_FUNCTION_NUMBER_PCH_P2SB,
-                              SBREG_BARH);
+    Status = PciConfigRead(EfiPciIoWidthUint32, p2sb_addr + SBREG_BARH, 1, &reg);
 #ifdef __LP64__
     base |= ((uint64_t)reg & 0xFFFFFFFF) << 32;
 #else
@@ -103,7 +136,6 @@ static int pit_8254cge_workaround(void)
         goto test_pit;
     }
 #endif
-
     /* FIXME: Validate base */
     reg = readl(PCH_PCR_ADDRESS(base, PID_ITSS, R_PCH_PCR_ITSS_ITSSPRC));
     printf("ITSSPRC = %x, ITSSPRC.8254CGE= %x\n", reg, !!(reg & B_PCH_PCR_ITSS_ITSSPRC_8254CGE));
@@ -113,13 +145,9 @@ static int pit_8254cge_workaround(void)
 
     /* Hide P2SB again */
     if (p2sb_hide) {
-        reg = pciConfigReadDWord(pch_pci_bus, PCI_DEVICE_NUMBER_PCH_P2SB,
-                                 PCI_FUNCTION_NUMBER_PCH_P2SB,
-                                 R_P2SB_CFG_P2SBC);
+        Status = PciConfigRead(EfiPciIoWidthUint32, p2sb_addr + R_P2SB_CFG_P2SBC, 1, &reg);
         reg |= B_P2SB_CFG_P2SBC_HIDE;
-        pciConfigWriteDWord(pch_pci_bus, PCI_DEVICE_NUMBER_PCH_P2SB,
-                            PCI_FUNCTION_NUMBER_PCH_P2SB,
-                            R_P2SB_CFG_P2SBC, reg);
+        Status = PciConfigWrite(EfiPciIoWidthUint32, p2sb_addr + R_P2SB_CFG_P2SBC, 1, &reg);
     }
 
 test_pit:
@@ -138,17 +166,13 @@ test_pit:
     return 0;
 }
 
-int apply_intel_platform_workarounds(void)
+int apply_intel_platform_workarounds(struct csmwrap_priv *priv)
 {
-    uint16_t vendor_id;
-
-    vendor_id = pciConfigReadWord(0, 0, 0, 0x0);
-
-    if (vendor_id != 0x8086) {
-        return 0;
+    if (priv->hbridge_hdr.VendorId != 0x8086) {
+        return 0; // Not an Intel platform
     }
 
-    pit_8254cge_workaround();
+    pit_8254cge_workaround(priv);
 
     return 0;
 }
