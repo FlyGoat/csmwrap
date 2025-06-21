@@ -359,7 +359,7 @@ static EFI_STATUS csmwrap_video_oprom_init(struct csmwrap_priv *priv)
     VOID  *LocalRomImage;
 
     if (!PciIo || !PciIo->RomImage || !PciIo->RomSize) {
-        DEBUG((DEBUG_ERROR, "No PCI I/O protocol or RomImage function\n"));
+        DEBUG((DEBUG_ERROR, No PCI I/O protocol or RomImage function\n));
         return EFI_UNSUPPORTED;
     }
 
